@@ -1,0 +1,11 @@
+{
+    "model": "L0",
+    "seed": 42,
+    "date": "2026-11-16 17:43:30",
+    "metrics": {
+        "s1_mae": 1.2168,
+        "s2a_jaccard": 0.4545,
+        "s2b_jaccard": 0.4545,
+        "severe_underestimation_pct": 100.0
+    }
+}
