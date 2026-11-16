@@ -18,9 +18,13 @@ Dado el historial de una interacción entre un usuario y un agente, y la acción
 Requiere Python 3.14 y Git. Probado en Windows (PowerShell) con Python 3.14.5. Desde una carpeta vacía:
 
 ```powershell
+# 1. Clonar el repositorio
 git clone https://github.com/criss132/AgentRisk.git; cd AgentRisk
+# 2. Crear el entorno e instalar dependencias
 python -m venv .venv; .venv\Scripts\Activate.ps1; pip install -r requirements.txt
+# 3. Descargar los datos (obligatorio: los datos no están en el repositorio)
 python data/download_data.py
+# 4. Particiones y líneas base
 python src/make_splits.py; python src/baseline_L0.py; python src/baseline_L1.py
 ```
 
