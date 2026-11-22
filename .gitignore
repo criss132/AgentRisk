@@ -222,3 +222,5 @@ __marimo__/
 
 data/raw/
 experiments/checkpoints/
+# Contiene texto del dataset (los datos no se suben al repositorio)
+experiments/errores_dev.csv

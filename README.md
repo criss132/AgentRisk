@@ -170,6 +170,7 @@ src/train_m1.py            M1: DeBERTa-v3 base multitarea (GPU; se ejecutó en K
 src/baselines_cv.py         L0 y L1 evaluados con los mismos 5 folds
 src/seleccionar_umbrales.py elige umbrales en los folds y los confirma en dev (M1 y L1)
 src/m2_llm.py              M2: LLM abierto local con Ollama (zero-shot y few-shot)
+src/analisis_errores.py     análisis de errores de M1 en dev: CSV por ejemplo, selección de casos y causas
 src/prototipo.py           prototipo de inferencia sin conexión: M1 con los pesos guardados y respaldo en L1
 notebooks/                 exploración de los datos
 experiments/               resultados en JSON, con la semilla usada
@@ -184,4 +185,4 @@ docs/bitacora_ia.md        bitácora de uso de IA
 
 ## Uso de IA
 
-Todo el uso de IA está registrado en [`docs/bitacora_ia.md`](docs/bitacora_ia.md). Claude propuso pasos, explicó conceptos, revisó código y redactó la documentación a pedido del estudiante, y editó directamente `src/m2_llm.py` a pedido suyo (detalle en la bitácora). El uso de otras herramientas de IA y la ayuda de terceros también se registran en esa bitácora.
+Todo el uso de IA está registrado en [`docs/bitacora_ia.md`](docs/bitacora_ia.md). Claude propuso pasos, explicó conceptos, revisó código y redactó la documentación a pedido del estudiante, y editó directamente `src/m2_llm.py`, `src/train_m1.py`, `src/prototipo.py` y `src/analisis_errores.py` a pedido suyo (detalle en la bitácora). El uso de otras herramientas de IA y la ayuda de terceros también se registran en esa bitácora.
