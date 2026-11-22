@@ -9,9 +9,9 @@ Dado el historial de una interacción entre un usuario y un agente, y la acción
 | S1 | Severidad del riesgo (1 a 5) | MAE (menor es mejor) |
 | S2a | Dominio de daño (1 o 2 de 11 etiquetas) | Jaccard medio |
 | S2b | Origen del riesgo (1 o 2 de 7 etiquetas) | Jaccard medio |
-| S3 | Intervención guiada por política | F1, con políticas y casos propios (pendiente) |
+| S3 | Intervención guiada por política | F1 macro, con políticas y casos propios |
 
-**Estado: Hito 3 (en curso).** Datos, particiones por grupos, líneas base L0 y L1 y M1 (DeBERTa-v3 base multitarea) evaluados en `dev` y con validación cruzada de 5 folds, y umbrales de decisión elegidos con los folds y confirmados en `dev`. Con M2 (qwen2.5:3b local, zero-shot y few-shot) evaluado en `dev`. Faltan S3, el análisis de errores, las métricas por subgrupo, el prototipo y el informe.
+**Estado: Hito 3 (en curso).** Datos, particiones por grupos, líneas base L0 y L1 y M1 (DeBERTa-v3 base multitarea) evaluados en `dev` y con validación cruzada de 5 folds, y umbrales de decisión elegidos con los folds y confirmados en `dev`. Con M2 (qwen2.5:3b local, zero-shot y few-shot) evaluado en `dev`. También están hechos el análisis de errores, las métricas por subgrupo y S3 (monitor y línea base con LLM). Faltan los tiempos y la demo del prototipo y el informe.
 
 ## Cómo reproducir los resultados
 
@@ -157,6 +157,51 @@ Lo que se observa (matrices de confusión contra `dev`, donde la severidad real 
 
 Resultados: `experiments/m2_zero-shot_qwen2.5-3b_dev_resultados.json` y `experiments/m2_few-shot_qwen2.5-3b_dev_resultados.json` (predicciones en los `.jsonl` del mismo nombre).
 
+## Análisis de errores de M1
+
+Se hizo con M1 (semilla 42) y los umbrales elegidos con los folds, sobre `dev` (`src/analisis_errores.py`). Las cifras recalculadas coinciden con `experiments/umbrales_resultados.json` (MAE 0.3986, subestimación severa 10.8 %, Jaccard 0.7028 y 0.6737).
+
+- **S1:** la matriz de confusión muestra que la regla de umbral casi nunca predice severidad 3: 26 de los 32 casos reales de severidad 3 salen como 4 (con la regla por defecto, 23 salían como 4 y 3 acertaban). Eso explica el sesgo medio de +0.105.
+- **S2a (dominio):** M1 sobrepredice *Privacy / Confidentiality* (15 falsos positivos) y *No Material Harm* (18). Los dominios menos frecuentes (seguridad, finanzas, operación, salud) casi siempre se pierden: 9 a 16 falsos negativos cada uno.
+- **S2b (origen):** *Scope / Safeguard Failure* se confunde con *Authorization / Consent Failure* en 19 casos.
+- **Longitud:** 142 de 143 ejemplos superan los 512 tokens que ve M1. Por cuartiles de longitud el error no sigue un patrón (Spearman entre longitud y error absoluto de +0.04), así que no hay evidencia de que la longitud por sí sola explique el error.
+- **11 casos revisados a mano** (`experiments/errores_dev_seleccionados.csv`, sin texto del dataset), elegidos con una regla fija (5 por criterio, desempate por `example_id`). Causas asignadas: inicio recortado (4), etiqueta poco frecuente (2), otra (2), ambigüedad de etiqueta (1), señal no explícita (1) y sesgo hacia una clase frecuente (1). En cuatro casos (033, 051, 092 y 335) se verificó en el texto que la parte recortada por la izquierda contiene la información que explica el error. Las demás causas son hipótesis leídas en la trayectoria, sin una prueba que las confirme. Con 11 casos son pistas, no conclusiones.
+
+## Métricas por subgrupo
+
+Los datos no traen atributos de personas, así que los subgrupos son tipos de caso (severidad real, dominio, factor y cuartil de longitud) y no grupos humanos. Tabla completa en `experiments/metricas_subgrupos_dev.csv`; los subgrupos con menos de 20 casos no son confiables.
+
+| Subgrupo (`dev`) | n | MAE S1 | Jaccard S2a | Jaccard S2b |
+|---|---|---|---|---|
+| Todos | 143 | 0.399 | 0.703 | 0.674 |
+| Casos sin daño (*No Material Harm*) | 65 | 0.061 | 0.985 | 0.985 |
+| Casos con daño | 78 | 0.679 | 0.468 | 0.415 |
+| Severidad real 3 | 32 | 1.125 | 0.547 | 0.422 |
+| Severidad real 4-5 | 37 | 0.324 | 0.513 | 0.509 |
+| Dominio *Privacy / Confidentiality* | 45 | 0.511 | 0.778 | 0.585 |
+| Dominio *Security / System Integrity* (n < 20) | 16 | 0.688 | 0.188 | 0.396 |
+| Dominio *Financial / Assets* (n < 20) | 13 | 0.769 | 0.192 | 0.385 |
+
+M1 funciona bien en los casos sin daño y mucho peor en los casos con daño, sobre todo en la severidad 3 y en los dominios menos frecuentes. El promedio global (0.399) esconde esa diferencia.
+
+## S3: intervención guiada por política
+
+Dos políticas propias (A, equilibrada, y B, estricta en dominios sensibles; reglas en [`docs/politicas_s3.md`](docs/politicas_s3.md)) fijadas antes de calcular resultados. Los casos son las 143 trayectorias de `dev` y la intervención de referencia sale de aplicar la política a las etiquetas reales. Se compara M1 con los umbrales elegidos más la política (`src/s3_evaluar.py`) contra `qwen2.5:3b` con un solo prompt y sin monitor (`src/m2_s3.py`), con F1 macro sobre `permitir`, `confirmar` y `bloquear`.
+
+| Política | Monitor (M1 + política) | LLM con un prompt | Siempre `permitir` | Monitor menos LLM |
+|---|---|---|---|---|
+| A | 0.534 | 0.139 | 0.225 | +0.395 |
+| B | 0.634 | 0.176 | 0.211 | +0.458 |
+
+Lo que se observa:
+
+- El monitor supera en más de +0.10 a la línea base con LLM en las dos políticas, pero la línea base es muy débil: acierta el 18.9 % de los casos, menos que predecir siempre `permitir` (51 % con A y 46 % con B). Frente a ese predictor trivial la ventaja del monitor es de +0.31 (A) y +0.42 (B), una cifra más honesta que la anterior.
+- La salida del LLM está anticorrelacionada con la referencia (Spearman −0.53 con A y −0.45 con B): bloquea o pide confirmación en 50 de los 73 casos que la política A permite, y permite 32 de los 37 casos que debe bloquear. La acción propuesta sí aparece en el prompt (143 de 143 trayectorias), así que no es un error de entrada. La causa no se diagnosticó; es un modelo de 3B parámetros con un solo prompt y no se probó otro modelo ni otro prompt.
+- El monitor casi no acierta la clase intermedia: `confirmar` tiene F1 de 0.000 con A (28 de los 33 casos se bloquean) y 0.210 con B. Es consecuencia directa de que M1 no predice la severidad 3 con los umbrales actuales. Las políticas no se ajustaron para mejorar este resultado.
+- Límites: la referencia sale de las mismas etiquetas que el monitor predice (no es un juicio humano independiente), las políticas las escribió una sola persona, son 143 casos y una sola corrida del LLM con temperatura 0.
+
+Resultados: `experiments/s3_monitor_resultados.json`, `experiments/m2_s3_A_qwen2.5-3b_dev_resultados.json` y `experiments/m2_s3_B_qwen2.5-3b_dev_resultados.json`.
+
 ## Estructura del repositorio
 
 ```
@@ -172,17 +217,21 @@ src/seleccionar_umbrales.py elige umbrales en los folds y los confirma en dev (M
 src/m2_llm.py              M2: LLM abierto local con Ollama (zero-shot y few-shot)
 src/analisis_errores.py     análisis de errores de M1 en dev: CSV por ejemplo, selección de casos y causas
 src/prototipo.py           prototipo de inferencia sin conexión: M1 con los pesos guardados y respaldo en L1
+src/s3_politicas.py        S3: las dos políticas de intervención y los textos que se le dan al LLM
+src/s3_evaluar.py          S3: evalúa el monitor (M1 + política) contra la referencia
+src/m2_s3.py               S3: línea base con LLM local y un solo prompt
 notebooks/                 exploración de los datos
 experiments/               resultados en JSON, con la semilla usada
 experiments/checkpoints/   pesos de M1 (no se suben a GitHub)
+docs/politicas_s3.md       políticas, casos y limitaciones de S3
 docs/bitacora_ia.md        bitácora de uso de IA
 ```
 
 ## Pendiente para el Hito 3
 
-- S3: políticas y casos propios.
-- Análisis de errores, métricas por subgrupo, prototipo e informe.
+- Prototipo: medir tiempos de carga y predicción, preparar el caso de demostración y declarar el tipo de prototipo.
+- Informe IEEE, diapositivas y defensa.
 
 ## Uso de IA
 
-Todo el uso de IA está registrado en [`docs/bitacora_ia.md`](docs/bitacora_ia.md). Claude propuso pasos, explicó conceptos, revisó código y redactó la documentación a pedido del estudiante, y editó directamente `src/m2_llm.py`, `src/train_m1.py`, `src/prototipo.py` y `src/analisis_errores.py` a pedido suyo (detalle en la bitácora). El uso de otras herramientas de IA y la ayuda de terceros también se registran en esa bitácora.
+Todo el uso de IA está registrado en [`docs/bitacora_ia.md`](docs/bitacora_ia.md). Claude propuso pasos, explicó conceptos, revisó código y redactó la documentación a pedido del estudiante, y editó directamente `src/m2_llm.py`, `src/train_m1.py`, `src/prototipo.py` y `src/analisis_errores.py` a pedido suyo, además de escribir `src/s3_politicas.py`, `src/s3_evaluar.py` y `src/m2_s3.py` (detalle en la bitácora). El uso de otras herramientas de IA y la ayuda de terceros también se registran en esa bitácora.

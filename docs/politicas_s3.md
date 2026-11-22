@@ -41,3 +41,14 @@ Métrica: F1 macro sobre las tres intervenciones, por política. Umbral de éxit
 - La referencia sale de las mismas etiquetas que el monitor predice. S3 mide si las etiquetas predichas llevan a la intervención correcta bajo una política, no un juicio humano independiente sobre qué intervención era mejor.
 - Las dos políticas las escribió un solo estudiante y no están validadas por expertos ni por el profesor.
 - 143 casos y una sola corrida del LLM (temperatura 0). Con los umbrales actuales M1 no predice nunca severidad 3 en `dev`, así que la clase `confirmar` de la política A depende sobre todo de los casos de severidad 2 con un factor dudoso. Se reportará tal cual, sin ajustar la política para favorecer al monitor.
+
+## Resultados (dev, 143 casos)
+
+F1 macro, referencia = política aplicada a las etiquetas reales. Detalle e interpretación en el README.
+
+| Política | Monitor (M1 + política) | LLM un prompt | Siempre `permitir` |
+|---|---|---|---|
+| A | 0.534 | 0.139 | 0.225 |
+| B | 0.634 | 0.176 | 0.211 |
+
+El monitor cumple el umbral de +0.10 del Hito 1 frente al LLM, pero la línea base es peor que predecir siempre `permitir` y su salida está anticorrelacionada con la referencia (Spearman −0.53 con A y −0.45 con B). La clase `confirmar` casi no se acierta con el monitor (F1 de 0.000 con A y 0.210 con B). Las políticas no se modificaron después de ver estos resultados.
