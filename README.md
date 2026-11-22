@@ -32,6 +32,8 @@ python src/baselines_cv.py; python src/seleccionar_umbrales.py
 
 En Linux o macOS, la activación del entorno es `source .venv/bin/activate`.
 
+**Prototipo.** `src/prototipo.py` carga M1 sin conexión desde `experiments/checkpoints/m1_dev_seed42/` (los pesos, 702 MB, no están en el repositorio y se entregan aparte). `requirements.txt` instala `torch` en su versión de CPU. Para comprobar que la recarga reproduce las predicciones guardadas: `python src/prueba_recarga.py` (en PowerShell, `$env:CUDA_VISIBLE_DEVICES="-1"; $env:HF_HUB_OFFLINE="1"` antes, para forzar CPU y sin conexión).
+
 **M1 (requiere GPU).** Se entrenó en Kaggle con una GPU T4: clonar el repositorio, ejecutar `python data/download_data.py` y luego `python src/train_m1.py` (unos 6 minutos). Opciones: `--rapido` hace una prueba corta, `--fold N` entrena sin el fold N y predice sobre él, `--seed S` cambia la semilla y `--guardar` guarda los pesos en `experiments/checkpoints/`. Los resultados se escriben en `experiments/`. En Kaggle no se instala el `requirements.txt` fijado, porque reemplazaría las versiones de PyTorch del entorno.
 
 Los scripts deben ejecutarse desde la raíz del repositorio. Cada uno imprime sus métricas y guarda un JSON en `experiments/`.
@@ -145,6 +147,8 @@ src/baseline_L1_s2.py      línea base L1 (S2a y S2b, multietiqueta)
 src/train_m1.py            M1: DeBERTa-v3 base multitarea (GPU; se ejecutó en Kaggle)
 src/baselines_cv.py         L0 y L1 evaluados con los mismos 5 folds
 src/seleccionar_umbrales.py elige umbrales en los folds y los confirma en dev (M1 y L1)
+src/m2_llm.py              M2: LLM abierto local con Ollama (zero-shot y few-shot)
+src/prototipo.py           prototipo de inferencia sin conexión: M1 con los pesos guardados y respaldo en L1
 notebooks/                 exploración de los datos
 experiments/               resultados en JSON, con la semilla usada
 experiments/checkpoints/   pesos de M1 (no se suben a GitHub)
@@ -159,4 +163,4 @@ docs/bitacora_ia.md        bitácora de uso de IA
 
 ## Uso de IA
 
-Todo el uso de IA está registrado en [`docs/bitacora_ia.md`](docs/bitacora_ia.md). Claude propuso pasos, explicó conceptos, revisó código y redactó la documentación a pedido del estudiante. El uso de otras herramientas de IA y la ayuda de terceros también se registran en esa bitácora.
+Todo el uso de IA está registrado en [`docs/bitacora_ia.md`](docs/bitacora_ia.md). Claude propuso pasos, explicó conceptos, revisó código y redactó la documentación a pedido del estudiante, y editó directamente `src/m2_llm.py` a pedido suyo (detalle en la bitácora). El uso de otras herramientas de IA y la ayuda de terceros también se registran en esa bitácora.

@@ -1,3 +1,4 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 anyio==4.16.0
 asttokens==3.0.2
 click==8.5.1
@@ -33,6 +34,7 @@ pandas==3.1.1
 parso==0.8.7
 platformdirs==4.14.5
 prompt_toolkit==3.0.53
+protobuf==7.36.2
 psutil==7.2.2
 pure_eval==0.2.4
 pyarrow==26.0.1
@@ -40,13 +42,18 @@ Pygments==2.21.0
 python-dateutil==4.0.0
 PyYAML==6.0.3
 pyzmq==27.3.0
+safetensors==0.8.0
 scikit-learn==1.9.1
 scipy==1.18.1
+sentencepiece==0.2.3
 stack-data==0.6.3
 threadpoolctl==3.8.0
+tokenizers==0.23.3
+torch==2.15.0+cpu
 tornado==6.6.1
 tqdm==4.70.1
 traitlets==5.16.1
+transformers==5.24.0
 truststore==0.10.5
 typing_extensions==4.16.0
 tzdata==2026.6

@@ -202,17 +202,21 @@ class MultiTaskDataset(Dataset):
 
 
 class DebertaMultiTask(nn.Module):
-    def __init__(self, model_name, num_s1=5, num_s2a=11, num_s2b=7, dropout_prob=0.1, config=None):
+    def __init__(self, model_name, num_s1=5, num_s2a=11, num_s2b=7, dropout_prob=0.1, config=None, cargar_preentrenado=True):
         super().__init__()
         self.config = config if config is not None else AutoConfig.from_pretrained(model_name)
-        try:
-            self.encoder = AutoModel.from_pretrained(
-                model_name, config=self.config, dtype=torch.float32
-            )
-        except TypeError:
-            self.encoder = AutoModel.from_pretrained(
-                model_name, config=self.config, torch_dtype=torch.float32
-            )
+        if cargar_preentrenado:
+            try:
+                self.encoder = AutoModel.from_pretrained(
+                    model_name, config=self.config, dtype=torch.float32
+                )
+            except TypeError:
+                self.encoder = AutoModel.from_pretrained(
+                    model_name, config=self.config, torch_dtype=torch.float32
+                )
+        else:
+            # Inferencia sin conexión: la arquitectura se crea desde la config y los pesos llegan después con load_state_dict
+            self.encoder = AutoModel.from_config(self.config)
         hidden_size = self.config.hidden_size
 
         self.dropout = nn.Dropout(dropout_prob)
