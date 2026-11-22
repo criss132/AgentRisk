@@ -34,6 +34,17 @@ En Linux o macOS, la activación del entorno es `source .venv/bin/activate`.
 
 **Prototipo.** `src/prototipo.py` carga M1 sin conexión desde `experiments/checkpoints/m1_dev_seed42/` (los pesos, 702 MB, no están en el repositorio y se entregan aparte). `requirements.txt` instala `torch` en su versión de CPU. Para comprobar que la recarga reproduce las predicciones guardadas: `python src/prueba_recarga.py` (en PowerShell, `$env:CUDA_VISIBLE_DEVICES="-1"; $env:HF_HUB_OFFLINE="1"` antes, para forzar CPU y sin conexión).
 
+**Uso del prototipo (línea de comandos).** Pega una trayectoria en modo interactivo, o pasa un archivo `.jsonl`, `.json` o de texto con `--archivo`. Con `--politica A` o `--politica B` imprime además la intervención de S3 (permitir, confirmar o bloquear) según las reglas de `docs/politicas_s3.md`:
+
+```powershell
+python src/prototipo.py --politica A
+python src/prototipo.py --politica B --archivo ruta\casos.jsonl
+```
+
+El Hito 1 anunciaba una app web (Streamlit o Gradio); el prototipo entregado es una herramienta de línea de comandos.
+
+**Tiempos del prototipo** (`python src/medir_tiempos.py`, 30 casos de `dev` de a uno, CPU de 6 hilos con `torch` 2.15 solo CPU; la GPU no se midió porque el entorno instala la versión de CPU): carga de M1 en 8.1 s y predicción por caso con mediana de 0.96 s (p95 de 1.09 s). La entrada se trunca a 512 tokens, así que la latencia casi no depende del largo de la trayectoria. Resultados en `experiments/prototipo_tiempos.json`.
+
 **M1 (requiere GPU).** Se entrenó en Kaggle con una GPU T4: clonar el repositorio, ejecutar `python data/download_data.py` y luego `python src/train_m1.py` (unos 6 minutos). Opciones: `--rapido` hace una prueba corta, `--fold N` entrena sin el fold N y predice sobre él, `--seed S` cambia la semilla y `--guardar` guarda los pesos en `experiments/checkpoints/`. Los resultados se escriben en `experiments/`. En Kaggle no se instala el `requirements.txt` fijado, porque reemplazaría las versiones de PyTorch del entorno.
 
 Los scripts deben ejecutarse desde la raíz del repositorio. Cada uno imprime sus métricas y guarda un JSON en `experiments/`.
@@ -217,6 +228,7 @@ src/seleccionar_umbrales.py elige umbrales en los folds y los confirma en dev (M
 src/m2_llm.py              M2: LLM abierto local con Ollama (zero-shot y few-shot)
 src/analisis_errores.py     análisis de errores de M1 en dev: CSV por ejemplo, selección de casos y causas
 src/prototipo.py           prototipo de inferencia sin conexión: M1 con los pesos guardados y respaldo en L1
+src/medir_tiempos.py       tiempos de carga y de predicción por caso del prototipo
 src/s3_politicas.py        S3: las dos políticas de intervención y los textos que se le dan al LLM
 src/s3_evaluar.py          S3: evalúa el monitor (M1 + política) contra la referencia
 src/m2_s3.py               S3: línea base con LLM local y un solo prompt
@@ -234,4 +246,4 @@ docs/bitacora_ia.md        bitácora de uso de IA
 
 ## Uso de IA
 
-Todo el uso de IA está registrado en [`docs/bitacora_ia.md`](docs/bitacora_ia.md). Claude propuso pasos, explicó conceptos, revisó código y redactó la documentación a pedido del estudiante, y editó directamente `src/m2_llm.py`, `src/train_m1.py`, `src/prototipo.py` y `src/analisis_errores.py` a pedido suyo, además de escribir `src/s3_politicas.py`, `src/s3_evaluar.py` y `src/m2_s3.py` (detalle en la bitácora). El uso de otras herramientas de IA y la ayuda de terceros también se registran en esa bitácora.
+Todo el uso de IA está registrado en [`docs/bitacora_ia.md`](docs/bitacora_ia.md). Claude propuso pasos, explicó conceptos, revisó código y redactó la documentación a pedido del estudiante, y editó directamente `src/m2_llm.py`, `src/train_m1.py`, `src/prototipo.py` y `src/analisis_errores.py` a pedido suyo, además de escribir `src/s3_politicas.py`, `src/s3_evaluar.py`, `src/m2_s3.py` y `src/medir_tiempos.py` (detalle en la bitácora). El uso de otras herramientas de IA y la ayuda de terceros también se registran en esa bitácora.
