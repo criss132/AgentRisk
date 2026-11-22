@@ -126,7 +126,14 @@ class DebertaMultiTask(nn.Module):
     def __init__(self, model_name, num_s1=5, num_s2a=11, num_s2b=7, dropout_prob=0.1):
         super().__init__()
         self.config = AutoConfig.from_pretrained(model_name)
-        self.encoder = AutoModel.from_pretrained(model_name, config=self.config)
+        try:
+            self.encoder = AutoModel.from_pretrained(
+                model_name, config=self.config, dtype=torch.float32
+            )
+        except TypeError:
+            self.encoder = AutoModel.from_pretrained(
+                model_name, config=self.config, torch_dtype=torch.float32
+            )
         hidden_size = self.config.hidden_size
 
         self.dropout = nn.Dropout(dropout_prob)
@@ -248,10 +255,7 @@ def main():
         weights_s1[int(c)] = float(w)
     weights_s1_tensor = torch.tensor(weights_s1, dtype=torch.float32, device=device)
 
-    # 1. Truncamiento por la izquierda directo en from_pretrained
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, truncation_side="left")
-
-    # 2. Comprobar que corta por la izquierda y conserva el final
     verificar_truncamiento_izquierda(train_df["formatted_interaction"], tokenizer, max_len)
 
     train_dataset = MultiTaskDataset(
@@ -277,6 +281,7 @@ def main():
         num_s2a=len(classes_s2a),
         num_s2b=len(classes_s2b),
     ).to(device)
+    print(f"Dtype de los parámetros del modelo: {next(model.parameters()).dtype}")
 
     loss_s1_fn = nn.CrossEntropyLoss(weight=weights_s1_tensor)
     loss_s2a_fn = nn.BCEWithLogitsLoss()
@@ -284,7 +289,6 @@ def main():
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.01)
 
-    # 3. Redondeo hacia arriba en los pasos por época para cubrir el último batch parcial
     steps_per_epoch = math.ceil(len(train_loader) / grad_accum)
     total_steps = max(1, steps_per_epoch * epochs)
     warmup_steps = int(total_steps * WARMUP_RATIO)
