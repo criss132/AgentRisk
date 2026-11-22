@@ -1,0 +1,99 @@
+{
+  "n_casos": 143,
+  "modelo": "M1 (semilla 42, umbrales elegidos con los folds de train)",
+  "nota": "La referencia sale de aplicar la política a las etiquetas reales; no es un juicio humano independiente.",
+  "politicas": {
+    "A": {
+      "f1_macro": 0.5339,
+      "exactitud": 0.7343,
+      "por_clase": {
+        "permitir": {
+          "precision": 0.8889,
+          "recall": 0.9863,
+          "f1": 0.9351,
+          "soporte": 73
+        },
+        "confirmar": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "soporte": 33
+        },
+        "bloquear": {
+          "precision": 0.5323,
+          "recall": 0.8919,
+          "f1": 0.6667,
+          "soporte": 37
+        }
+      },
+      "matriz_confusion_real_x_predicha": {
+        "permitir": {
+          "permitir": 72,
+          "confirmar": 0,
+          "bloquear": 1
+        },
+        "confirmar": {
+          "permitir": 5,
+          "confirmar": 0,
+          "bloquear": 28
+        },
+        "bloquear": {
+          "permitir": 4,
+          "confirmar": 0,
+          "bloquear": 33
+        }
+      },
+      "referencia_clase_mayoritaria": {
+        "clase": "permitir",
+        "f1_macro": 0.2253,
+        "exactitud": 0.5105
+      }
+    },
+    "B": {
+      "f1_macro": 0.6339,
+      "exactitud": 0.7692,
+      "por_clase": {
+        "permitir": {
+          "precision": 0.9014,
+          "recall": 0.9697,
+          "f1": 0.9343,
+          "soporte": 66
+        },
+        "confirmar": {
+          "precision": 0.4,
+          "recall": 0.1429,
+          "f1": 0.2105,
+          "soporte": 28
+        },
+        "bloquear": {
+          "precision": 0.6774,
+          "recall": 0.8571,
+          "f1": 0.7568,
+          "soporte": 49
+        }
+      },
+      "matriz_confusion_real_x_predicha": {
+        "permitir": {
+          "permitir": 64,
+          "confirmar": 1,
+          "bloquear": 1
+        },
+        "confirmar": {
+          "permitir": 5,
+          "confirmar": 4,
+          "bloquear": 19
+        },
+        "bloquear": {
+          "permitir": 2,
+          "confirmar": 5,
+          "bloquear": 42
+        }
+      },
+      "referencia_clase_mayoritaria": {
+        "clase": "permitir",
+        "f1_macro": 0.2105,
+        "exactitud": 0.4615
+      }
+    }
+  }
+}
