@@ -11,7 +11,7 @@ Dado el historial de una interacción entre un usuario y un agente, y la acción
 | S2b | Origen del riesgo (1 o 2 de 7 etiquetas) | Jaccard medio |
 | S3 | Intervención guiada por política | F1, con políticas y casos propios (pendiente) |
 
-**Estado: Hito 3 (en curso).** Datos, particiones por grupos, líneas base L0 y L1 y M1 (DeBERTa-v3 base multitarea) evaluados en `dev` y con validación cruzada de 5 folds, y umbrales de decisión elegidos con los folds y confirmados en `dev`. Faltan M2, S3, el análisis de errores, las métricas por subgrupo, el prototipo y el informe.
+**Estado: Hito 3 (en curso).** Datos, particiones por grupos, líneas base L0 y L1 y M1 (DeBERTa-v3 base multitarea) evaluados en `dev` y con validación cruzada de 5 folds, y umbrales de decisión elegidos con los folds y confirmados en `dev`. Con M2 (qwen2.5:3b local, zero-shot y few-shot) evaluado en `dev`. Faltan S3, el análisis de errores, las métricas por subgrupo, el prototipo y el informe.
 
 ## Cómo reproducir los resultados
 
@@ -135,6 +135,28 @@ Cómo leerlo:
 
 Resultados: `experiments/l0_cv_resultados.json`, `experiments/l1_cv_resultados.json` y `experiments/umbrales_resultados.json`.
 
+## M2: modelo de lenguaje local (Ollama)
+
+M2 es `qwen2.5:3b` ejecutado localmente con Ollama (temperatura 0, semilla 42, `num_ctx` 6144), sin ajuste fino. Se le pide la salida en JSON con un esquema que limita las etiquetas a las del dataset. Se evaluó en las 143 filas de `dev` en dos modos: zero-shot, y few-shot con 3 ejemplos fijos tomados de `train` (severidades 1, 3 y 4, truncados a 1600 caracteres). Ninguna respuesta fue inválida en los dos modos. `python src/m2_llm.py --modo zero-shot` o `--modo few-shot`.
+
+| Modelo | MAE S1 | Subestimación severos | Jaccard S2a | Jaccard S2b |
+|---|---|---|---|---|
+| L0 (mediana y moda, CV de 5 folds) | 1.206 | 100 % | 0.461 | 0.461 |
+| M2 zero-shot | 1.294 | 89.2 % | 0.356 | 0.182 |
+| M2 few-shot | 2.119 | 81.1 % | 0.148 | 0.089 |
+| M1 ajustado (`dev`, 3 semillas) | 0.345 | 7.2 % | 0.702 | 0.681 |
+
+Lo que se observa (matrices de confusión contra `dev`, donde la severidad real es 1: 66, 2: 8, 3: 32, 4: 35 y 5: 2):
+
+- M2 no supera a la línea base trivial L0 en MAE ni en Jaccard, en ninguno de los dos modos (solo subestima menos que L0, que siempre predice la mediana). Queda lejos de los umbrales del Hito 1 y sirve como punto de comparación, no como candidato.
+- Zero-shot colapsa a la severidad 2 (123 de 143 predicciones). No detecta ninguno de los 37 casos con severidad 4 o 5 y marca 5 casos no severos como severos.
+- Few-shot cambia el patrón pero no mejora: se polariza (78 predicciones de 2 y 44 de 5; el 5 no aparece en ninguno de los 3 ejemplos). Detecta 6 de los 37 casos severos, pero marca como severos 50 casos que no lo son; 34 de los 66 casos con severidad real 1 salen como 5. Por eso su MAE es mayor que el de zero-shot.
+- Ninguno de los dos modos predice nunca la severidad 1, aunque el esquema la permite y es la clase más frecuente en `dev`.
+- Hipótesis sin comprobar: el modelo de 3B parámetros es demasiado pequeño para la tarea, y en few-shot los prompts largos (hasta 4 987 tokens de 6 144) y solo 3 ejemplos fijos lo desestabilizan. No se probó otro conjunto de ejemplos ni otro modelo.
+- Límites: una sola corrida por modo (con temperatura 0), con 3 ejemplos fijos elegidos una vez y un modelo pequeño, porque la laptop tiene una GPU de 4 GB. Las conclusiones valen para esta configuración y no para los LLM en general.
+
+Resultados: `experiments/m2_zero-shot_qwen2.5-3b_dev_resultados.json` y `experiments/m2_few-shot_qwen2.5-3b_dev_resultados.json` (predicciones en los `.jsonl` del mismo nombre).
+
 ## Estructura del repositorio
 
 ```
@@ -157,7 +179,6 @@ docs/bitacora_ia.md        bitácora de uso de IA
 
 ## Pendiente para el Hito 3
 
-- M2: modelo de lenguaje de pesos abiertos con pocos ejemplos (Ollama, local).
 - S3: políticas y casos propios.
 - Análisis de errores, métricas por subgrupo, prototipo e informe.
 
