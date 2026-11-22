@@ -1,6 +1,6 @@
 # Bitácora humano-IA — AgentRisk
 
-Norma del curso: la IA no escribe el código del proyecto. Claude solo propone pasos, explica conceptos, hace preguntas y revisa el código que escribe el estudiante. La documentación (README, bitácora y PDF de avance) sí la redacta Claude a pedido del estudiante, y se indica en cada fila.
+Alcance del uso de IA: Claude propuso pasos, explicó conceptos, hizo preguntas y revisó el código del estudiante. La documentación (README, bitácora y PDF de avance) la redactó Claude a pedido del estudiante, y se indica en cada fila. El uso de otras herramientas de IA y la ayuda de terceros se registran en las filas correspondientes.
 
 
 | Fecha | Integrante | Herramienta | Para qué se usó | Qué se aceptó, modificó o descartó | Cómo se verificó |

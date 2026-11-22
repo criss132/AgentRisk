@@ -119,4 +119,4 @@ docs/bitacora_ia.md        bitácora de uso de IA
 
 ## Uso de IA
 
-Todo el uso de IA está registrado en [`docs/bitacora_ia.md`](docs/bitacora_ia.md). Por norma del curso, el código lo escribe el estudiante: la IA solo guía los pasos y revisa.
+Todo el uso de IA está registrado en [`docs/bitacora_ia.md`](docs/bitacora_ia.md). Claude propuso pasos, explicó conceptos, revisó código y redactó la documentación a pedido del estudiante. El uso de otras herramientas de IA y la ayuda de terceros también se registran en esa bitácora.
