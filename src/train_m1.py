@@ -39,9 +39,9 @@ UMBRAL_SEGUNDA_ETIQUETA = 0.3
 
 TRAIN_PATH = "data/raw/data/train.jsonl"
 DEV_PATH = "data/raw/data/dev.jsonl"
+SPLITS_PATH = "data/splits/train_folds.csv"
 OUTPUT_DIR = "experiments"
-METRICS_FILE = os.path.join(OUTPUT_DIR, "m1_resultados.json")
-PREDS_FILE = os.path.join(OUTPUT_DIR, "m1_dev_predicciones.jsonl")
+ARTIFACTS_BASE_DIR = os.path.join(OUTPUT_DIR, "checkpoints")
 
 
 def set_seed(seed: int):
@@ -75,6 +75,8 @@ def seleccionar_etiquetas(probs_fila, classes, umbral=UMBRAL_SEGUNDA_ETIQUETA):
 def verificar_truncamiento_izquierda(texts, tokenizer, max_len):
     """Toma el texto más largo y verifica que tras truncar conserva el final."""
     textos_lista = list(texts)
+    if not textos_lista:
+        return
     texto_largo = max(textos_lista, key=lambda t: len(str(t)))
     ids_truncados = tokenizer(
         texto_largo,
@@ -89,6 +91,83 @@ def verificar_truncamiento_izquierda(texts, tokenizer, max_len):
     print(f"Final del texto original (-180 chars): {repr(texto_largo[-180:])}")
     print(f"Final decodificado tras truncar (-180 chars): {repr(decodificado[-180:])}")
     print(f"Inicio decodificado tras truncar (+120 chars): {repr(decodificado[:120])}\n")
+
+
+def compute_s1_weights(y_s1_indices: np.ndarray, device: torch.device) -> tuple[np.ndarray, torch.Tensor]:
+    clases_presentes = np.unique(y_s1_indices)
+    pesos_calculados = compute_class_weight(
+        class_weight="balanced",
+        classes=clases_presentes,
+        y=y_s1_indices,
+    )
+    weights_s1 = np.ones(5, dtype=np.float32)
+    for c, w in zip(clases_presentes, pesos_calculados):
+        weights_s1[int(c)] = float(w)
+    return weights_s1, torch.tensor(weights_s1, dtype=torch.float32, device=device)
+
+
+def get_run_tag(fold: int | None, seed: int) -> str:
+    if fold is not None:
+        return f"m1_cv_fold{fold}_seed{seed}"
+    if seed == SEED_DEFAULT:
+        return "m1_dev_seed42"
+    return f"m1_dev_seed{seed}"
+
+
+def get_output_paths(fold: int | None, seed: int) -> tuple[str, str]:
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    if fold is not None:
+        base = f"m1_cv_fold{fold}_seed{seed}"
+        return os.path.join(OUTPUT_DIR, f"{base}.json"), os.path.join(OUTPUT_DIR, f"{base}.jsonl")
+    if seed == SEED_DEFAULT:
+        return (
+            os.path.join(OUTPUT_DIR, "m1_resultados.json"),
+            os.path.join(OUTPUT_DIR, "m1_dev_predicciones.jsonl"),
+        )
+    return (
+        os.path.join(OUTPUT_DIR, f"m1_seed{seed}_resultados.json"),
+        os.path.join(OUTPUT_DIR, f"m1_seed{seed}_dev_predicciones.jsonl"),
+    )
+
+
+def save_model_artifacts(
+    model: "DebertaMultiTask",
+    tokenizer,
+    classes_s2a: np.ndarray,
+    classes_s2b: np.ndarray,
+    save_dir: str,
+):
+    os.makedirs(save_dir, exist_ok=True)
+
+    # 1. Pesos completos del modelo multitarea (codificador + cabezales S1, S2a, S2b)
+    weights_path = os.path.join(save_dir, "model_weights.pt")
+    state_dict_cpu = {k: v.detach().cpu() for k, v in model.state_dict().items()}
+    torch.save(state_dict_cpu, weights_path)
+
+    # 2. Configuración del codificador y tokenizador para carga sin internet
+    config_dir = os.path.join(save_dir, "encoder_config")
+    tokenizer_dir = os.path.join(save_dir, "tokenizer")
+    os.makedirs(config_dir, exist_ok=True)
+    os.makedirs(tokenizer_dir, exist_ok=True)
+
+    model.config.save_pretrained(config_dir)
+    tokenizer.save_pretrained(tokenizer_dir)
+
+    # 3. Metadatos de clases para reconstruir etiquetas en inferencia offline
+    label_meta_path = os.path.join(save_dir, "label_classes.json")
+    with open(label_meta_path, "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "num_s1": 5,
+                "s2a_domains": list(classes_s2a),
+                "s2b_drivers": list(classes_s2b),
+            },
+            f,
+            indent=2,
+            ensure_ascii=False,
+        )
+
+    print(f"Artefactos guardados en: {save_dir}")
 
 
 class MultiTaskDataset(Dataset):
@@ -123,9 +202,9 @@ class MultiTaskDataset(Dataset):
 
 
 class DebertaMultiTask(nn.Module):
-    def __init__(self, model_name, num_s1=5, num_s2a=11, num_s2b=7, dropout_prob=0.1):
+    def __init__(self, model_name, num_s1=5, num_s2a=11, num_s2b=7, dropout_prob=0.1, config=None):
         super().__init__()
-        self.config = AutoConfig.from_pretrained(model_name)
+        self.config = config if config is not None else AutoConfig.from_pretrained(model_name)
         try:
             self.encoder = AutoModel.from_pretrained(
                 model_name, config=self.config, dtype=torch.float32
@@ -153,6 +232,8 @@ class DebertaMultiTask(nn.Module):
 def parse_args():
     parser = argparse.ArgumentParser(description="Entrenamiento multi-tarea M1 con DeBERTa-v3-base")
     parser.add_argument("--rapido", action="store_true", help="Modo rápido: 64 ejemplos, 1 época, 128 tokens")
+    parser.add_argument("--fold", type=int, default=None, help="Índice de fold (0..4) para validación cruzada")
+    parser.add_argument("--guardar", action="store_true", help="Guarda pesos, config y tokenizer del modelo")
     parser.add_argument("--epochs", type=int, default=EPOCHS_DEFAULT)
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE_DEFAULT)
     parser.add_argument("--grad-accum", type=int, default=GRAD_ACCUM_DEFAULT)
@@ -162,7 +243,16 @@ def parse_args():
     return parser.parse_args()
 
 
-def evaluate_dev(model, loader, device, classes_s2a, classes_s2b, y_dev_s1_orig, y_dev_s2a_listas, y_dev_s2b_listas):
+def evaluate_split(
+    model,
+    loader,
+    device,
+    classes_s2a,
+    classes_s2b,
+    y_eval_s1_orig,
+    y_eval_s2a_listas,
+    y_eval_s2b_listas,
+):
     model.eval()
     probs_s1_list, probs_s2a_list, probs_s2b_list = [], [], []
 
@@ -185,9 +275,9 @@ def evaluate_dev(model, loader, device, classes_s2a, classes_s2b, y_dev_s1_orig,
     probs_s2b = np.vstack(probs_s2b_list)
 
     pred_s1 = np.argmax(probs_s1, axis=-1) + 1
-    mae_s1 = float(np.mean(np.abs(y_dev_s1_orig - pred_s1)))
+    mae_s1 = float(np.mean(np.abs(y_eval_s1_orig - pred_s1)))
 
-    severe_mask = y_dev_s1_orig >= 4
+    severe_mask = y_eval_s1_orig >= 4
     if np.sum(severe_mask) > 0:
         underestimation_pct = float(np.mean(pred_s1[severe_mask] <= 2) * 100.0)
     else:
@@ -196,8 +286,8 @@ def evaluate_dev(model, loader, device, classes_s2a, classes_s2b, y_dev_s1_orig,
     preds_s2a = [seleccionar_etiquetas(row, classes_s2a, UMBRAL_SEGUNDA_ETIQUETA) for row in probs_s2a]
     preds_s2b = [seleccionar_etiquetas(row, classes_s2b, UMBRAL_SEGUNDA_ETIQUETA) for row in probs_s2b]
 
-    jaccard_s2a = float(np.mean([jaccard(r, p) for r, p in zip(y_dev_s2a_listas, preds_s2a)]))
-    jaccard_s2b = float(np.mean([jaccard(r, p) for r, p in zip(y_dev_s2b_listas, preds_s2b)]))
+    jaccard_s2a = float(np.mean([jaccard(r, p) for r, p in zip(y_eval_s2a_listas, preds_s2a)]))
+    jaccard_s2b = float(np.mean([jaccard(r, p) for r, p in zip(y_eval_s2b_listas, preds_s2b)]))
 
     metrics = {
         "s1_mae": round(mae_s1, 4),
@@ -217,15 +307,40 @@ def main():
     grad_accum = args.grad_accum
     lr = args.lr
     seed = args.seed
+    fold = args.fold
 
     set_seed(seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     use_amp_initial = device.type == "cuda"
 
-    print(f"=== M1 Training | device={device} | rapido={args.rapido} | epochs={epochs} | max_len={max_len} ===")
+    mode_str = f"CV fold={fold}" if fold is not None else "train->dev"
+    print(f"=== M1 Training | mode={mode_str} | seed={seed} | rapido={args.rapido} | guardar={args.guardar} ===")
 
-    train_df = pd.read_json(TRAIN_PATH, lines=True)
-    dev_df = pd.read_json(DEV_PATH, lines=True)
+    train_full_df = pd.read_json(TRAIN_PATH, lines=True)
+
+    mlb_s2a = MultiLabelBinarizer()
+    mlb_s2a.fit(train_full_df["risk_domains"])
+    classes_s2a = mlb_s2a.classes_
+
+    mlb_s2b = MultiLabelBinarizer()
+    mlb_s2b.fit(train_full_df["risk_drivers"])
+    classes_s2b = mlb_s2b.classes_
+
+    if fold is not None:
+        splits_df = pd.read_csv(SPLITS_PATH)
+        folds_disponibles = sorted(splits_df["fold"].unique().tolist())
+        print(f"Valores de 'fold' en {SPLITS_PATH}: {folds_disponibles}")
+        if fold not in folds_disponibles:
+            raise ValueError(f"El fold {fold} no existe en {SPLITS_PATH}. Disponibles: {folds_disponibles}")
+
+        merged_df = train_full_df.merge(splits_df[["example_id", "fold"]], on="example_id", how="inner")
+        train_df = merged_df[merged_df["fold"] != fold].reset_index(drop=True)
+        eval_df = merged_df[merged_df["fold"] == fold].reset_index(drop=True)
+        eval_split_name = f"fold_{fold}"
+    else:
+        train_df = train_full_df.reset_index(drop=True)
+        eval_df = pd.read_json(DEV_PATH, lines=True).reset_index(drop=True)
+        eval_split_name = "dev"
 
     if args.rapido:
         train_df, _ = train_test_split(
@@ -234,26 +349,17 @@ def main():
             stratify=train_df["risk_severity"],
             random_state=seed,
         )
-        dev_df = dev_df.iloc[: min(64, len(dev_df))].reset_index(drop=True)
+        train_df = train_df.reset_index(drop=True)
+        eval_df = eval_df.iloc[: min(64, len(eval_df))].reset_index(drop=True)
 
-    y_train_s1_orig = train_df["risk_severity"].to_numpy()
-    y_train_s1 = y_train_s1_orig - 1
-    y_dev_s1_orig = dev_df["risk_severity"].to_numpy()
+    print(f"Ejemplos entrenamiento: {len(train_df)} | Ejemplos evaluación ({eval_split_name}): {len(eval_df)}")
 
-    mlb_s2a = MultiLabelBinarizer()
-    y_train_s2a = mlb_s2a.fit_transform(train_df["risk_domains"])
-    classes_s2a = mlb_s2a.classes_
+    y_train_s1 = train_df["risk_severity"].to_numpy() - 1
+    y_train_s2a = mlb_s2a.transform(train_df["risk_domains"])
+    y_train_s2b = mlb_s2b.transform(train_df["risk_drivers"])
+    y_eval_s1_orig = eval_df["risk_severity"].to_numpy()
 
-    mlb_s2b = MultiLabelBinarizer()
-    y_train_s2b = mlb_s2b.fit_transform(train_df["risk_drivers"])
-    classes_s2b = mlb_s2b.classes_
-
-    clases_presentes = np.unique(y_train_s1)
-    pesos_calculados = compute_class_weight(class_weight="balanced", classes=clases_presentes, y=y_train_s1)
-    weights_s1 = np.ones(5, dtype=np.float32)
-    for c, w in zip(clases_presentes, pesos_calculados):
-        weights_s1[int(c)] = float(w)
-    weights_s1_tensor = torch.tensor(weights_s1, dtype=torch.float32, device=device)
+    weights_s1, weights_s1_tensor = compute_s1_weights(y_train_s1, device)
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, truncation_side="left")
     verificar_truncamiento_izquierda(train_df["formatted_interaction"], tokenizer, max_len)
@@ -266,14 +372,14 @@ def main():
         y_s2a=y_train_s2a,
         y_s2b=y_train_s2b,
     )
-    dev_dataset = MultiTaskDataset(
-        texts=dev_df["formatted_interaction"],
+    eval_dataset = MultiTaskDataset(
+        texts=eval_df["formatted_interaction"],
         tokenizer=tokenizer,
         max_len=max_len,
     )
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    dev_loader = DataLoader(dev_dataset, batch_size=batch_size * 2, shuffle=False)
+    eval_loader = DataLoader(eval_dataset, batch_size=batch_size * 2, shuffle=False)
 
     model = DebertaMultiTask(
         model_name=MODEL_NAME,
@@ -348,26 +454,41 @@ def main():
 
     elapsed_seconds = round(time.time() - start_time, 2)
 
-    metrics, probs_s1, probs_s2a, probs_s2b = evaluate_dev(
+    # Justo aquí model ya está en eval() y terminó la evaluación final
+    metrics, probs_s1, probs_s2a, probs_s2b = evaluate_split(
         model=model,
-        loader=dev_loader,
+        loader=eval_loader,
         device=device,
         classes_s2a=classes_s2a,
         classes_s2b=classes_s2b,
-        y_dev_s1_orig=y_dev_s1_orig,
-        y_dev_s2a_listas=dev_df["risk_domains"].tolist(),
-        y_dev_s2b_listas=dev_df["risk_drivers"].tolist(),
+        y_eval_s1_orig=y_eval_s1_orig,
+        y_eval_s2a_listas=eval_df["risk_domains"].tolist(),
+        y_eval_s2b_listas=eval_df["risk_drivers"].tolist(),
     )
 
-    print("\n=== Resultados finales en DEV (última época) ===")
+    print(f"\n=== Resultados finales en {eval_split_name} (última época) ===")
     print(json.dumps(metrics, indent=2, ensure_ascii=False))
 
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    metrics_file, preds_file = get_output_paths(fold=fold, seed=seed)
+    saved_dir = None
+
+    if args.guardar:
+        saved_dir = os.path.join(ARTIFACTS_BASE_DIR, get_run_tag(fold=fold, seed=seed))
+        save_model_artifacts(
+            model=model,
+            tokenizer=tokenizer,
+            classes_s2a=classes_s2a,
+            classes_s2b=classes_s2b,
+            save_dir=saved_dir,
+        )
 
     resultados_json = {
         "model": "M1",
         "backbone": MODEL_NAME,
+        "eval_split": eval_split_name,
+        "fold": fold,
         "mode_rapido": args.rapido,
+        "saved_artifacts_dir": saved_dir,
         "seed": seed,
         "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "training_time_sec": elapsed_seconds,
@@ -398,11 +519,11 @@ def main():
         "metrics": metrics,
     }
 
-    with open(METRICS_FILE, "w", encoding="utf-8") as f:
+    with open(metrics_file, "w", encoding="utf-8") as f:
         json.dump(resultados_json, f, indent=4, ensure_ascii=False)
 
-    with open(PREDS_FILE, "w", encoding="utf-8") as f:
-        for i, ex_id in enumerate(dev_df["example_id"]):
+    with open(preds_file, "w", encoding="utf-8") as f:
+        for i, ex_id in enumerate(eval_df["example_id"]):
             record = {
                 "example_id": ex_id,
                 "probs_s1": [round(float(x), 6) for x in probs_s1[i]],
@@ -411,8 +532,8 @@ def main():
             }
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
-    print(f"Métricas guardadas en: {METRICS_FILE}")
-    print(f"Predicciones por ejemplo guardadas en: {PREDS_FILE}")
+    print(f"Métricas guardadas en: {metrics_file}")
+    print(f"Predicciones por ejemplo guardadas en: {preds_file}")
 
 
 if __name__ == "__main__":
