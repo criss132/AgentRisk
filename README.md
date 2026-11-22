@@ -11,7 +11,7 @@ Dado el historial de una interacción entre un usuario y un agente, y la acción
 | S2b | Origen del riesgo (1 o 2 de 7 etiquetas) | Jaccard medio |
 | S3 | Intervención guiada por política | F1, con políticas y casos propios (pendiente) |
 
-**Estado: Hito 2 (avance).** Datos preparados, particiones por grupos, línea base L0 en S1, S2a y S2b, y línea base L1 en S1. El resto del plan (M1, M2 y S3) corresponde al Hito 3.
+**Estado: Hito 2 (avance).** Datos preparados, particiones por grupos, línea base L0 en S1, S2a y S2b, y línea base L1 en S1, S2a y S2b. El resto del plan (M1, M2 y S3) corresponde al Hito 3.
 
 ## Cómo reproducir los resultados
 
@@ -25,7 +25,7 @@ python -m venv .venv; .venv\Scripts\Activate.ps1; pip install -r requirements.tx
 # 3. Descargar los datos (obligatorio: los datos no están en el repositorio)
 python data/download_data.py
 # 4. Particiones y líneas base
-python src/make_splits.py; python src/baseline_L0.py; python src/baseline_L1.py
+python src/make_splits.py; python src/baseline_L0.py; python src/baseline_L1.py; python src/baseline_L1_s2.py
 ```
 
 En Linux o macOS, la activación del entorno es `source .venv/bin/activate`.
@@ -57,8 +57,8 @@ Todo se entrena con `train` y se evalúa en `dev`. Semilla fija: 42.
 | Modelo | S1 MAE | S2a Jaccard | S2b Jaccard | Subestimación severa* |
 |---|---|---|---|---|
 | L0: mediana y etiqueta más frecuente | 1.217 | 0.455 | 0.455 | 100 % |
-| L1: TF-IDF y regresión logística | 0.762 | pendiente | pendiente | 45.9 % |
-| L1 con `class_weight="balanced"` | **0.531** | pendiente | pendiente | **13.5 %** |
+| L1: TF-IDF y regresión logística | 0.762 | no evaluado | no evaluado | 45.9 % |
+| L1 con `class_weight="balanced"` | **0.531** | **0.492** | **0.486** | **13.5 %** |
 
 \* Porcentaje de ejemplos de `dev` con severidad real 4 o 5 que el modelo predice como 1 o 2 (37 ejemplos).
 
@@ -68,7 +68,10 @@ Cómo leerlo:
 - La configuración balanceada se eligió mirando `dev`, así que su resultado es algo optimista. Para el informe final la selección se hará con los folds y `dev` quedará como evaluación.
 - `dev` es pequeño (143 ejemplos, 37 severos): diferencias de pocos ejemplos mueven las métricas varios puntos.
 
-Resultados completos con hiperparámetros: `experiments/l0_resultados.json` y `experiments/l1_s1_resultados.json`.
+- En S2a y S2b, L1 mejora a L0 solo unas 0.03 a 0.04 (0.492 y 0.486 frente a 0.455). Con TF-IDF el texto distingue mucho peor los dominios y los orígenes del riesgo que la severidad. Para el modelo M1 el umbral del Hito 1 (+0.10) significa llegar a un Jaccard de unos 0.59.
+- La regla de decisión de S2 (siempre la etiqueta más probable, y la segunda si su probabilidad es al menos 0.3) usa un umbral fijo sin ajustar. Con él el modelo predice casi 2 etiquetas por ejemplo, cuando en `dev` hay 1.2 (S2a) y 1.4 (S2b), así que el Jaccard actual probablemente se pueda mejorar eligiendo el umbral con los folds.
+
+Resultados completos con hiperparámetros: `experiments/l0_resultados.json`, `experiments/l1_s1_resultados.json` y `experiments/l1_s2_resultados.json`.
 
 ## Estructura del repositorio
 
@@ -78,6 +81,7 @@ data/splits/               particiones por grupos (sin texto del dataset)
 src/make_splits.py         genera los 5 folds
 src/baseline_L0.py         línea base L0 (S1, S2a, S2b)
 src/baseline_L1.py         línea base L1 (S1)
+src/baseline_L1_s2.py      línea base L1 (S2a y S2b, multietiqueta)
 notebooks/                 exploración de los datos
 experiments/               resultados en JSON, con la semilla usada
 docs/bitacora_ia.md        bitácora de uso de IA
@@ -85,7 +89,7 @@ docs/bitacora_ia.md        bitácora de uso de IA
 
 ## Pendiente para el Hito 3
 
-- L1 para S2a y S2b.
+- Elegir el umbral de la segunda etiqueta de S2 con los folds, en lugar de fijarlo en 0.3.
 - M1: DeBERTa-v3 base multitarea; M2: modelo de lenguaje de pesos abiertos con pocos ejemplos.
 - S3: políticas y casos propios.
 - Selección de hiperparámetros con validación cruzada por grupos, análisis de errores, prototipo e informe.

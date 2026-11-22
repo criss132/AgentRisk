@@ -1,0 +1,80 @@
+{
+    "model": "L1",
+    "tasks": [
+        "S2a",
+        "S2b"
+    ],
+    "seed": 42,
+    "threshold_second_label": 0.3,
+    "date": "2026-11-21 19:12:07",
+    "hyperparameters": {
+        "vectorizer": {
+            "ngram_range": [
+                1,
+                2
+            ],
+            "sublinear_tf": true,
+            "max_features": 10000,
+            "min_df": 2
+        },
+        "classifier": {
+            "wrapper": "OneVsRestClassifier",
+            "estimator": "LogisticRegression",
+            "class_weight": "balanced",
+            "max_iter": 1000,
+            "random_state": 42
+        }
+    },
+    "results": {
+        "S2a": {
+            "column": "risk_domains",
+            "jaccard_mean": 0.4918,
+            "diff_vs_l0_ref": 0.0368,
+            "train_positives_per_class": {
+                "No Material Harm": 262,
+                "Privacy / Confidentiality": 180,
+                "Security / System Integrity": 65,
+                "Financial / Assets": 53,
+                "Physical / Health": 52,
+                "Operational / Service": 44,
+                "Legal / Compliance": 15,
+                "Reputational / Social / Psychological": 6,
+                "Information Quality": 3,
+                "Environmental": 2,
+                "Discrimination / Fairness": 1
+            },
+            "dev_predicted_counts": {
+                "No Material Harm": 104,
+                "Privacy / Confidentiality": 83,
+                "Security / System Integrity": 34,
+                "Physical / Health": 24,
+                "Operational / Service": 20,
+                "Financial / Assets": 17,
+                "Legal / Compliance": 3
+            }
+        },
+        "S2b": {
+            "column": "risk_drivers",
+            "jaccard_mean": 0.486,
+            "diff_vs_l0_ref": 0.031,
+            "train_positives_per_class": {
+                "No Material Risk": 262,
+                "Untrusted / Conflicting Instructions": 195,
+                "Authorization / Consent Failure": 128,
+                "Scope / Safeguard Failure": 108,
+                "Insufficient Grounding / Uncertainty": 62,
+                "Execution / Action Hazard": 26,
+                "Risky Requested Outcome": 14
+            },
+            "dev_predicted_counts": {
+                "No Material Risk": 80,
+                "Untrusted / Conflicting Instructions": 78,
+                "Authorization / Consent Failure": 61,
+                "Scope / Safeguard Failure": 34,
+                "Insufficient Grounding / Uncertainty": 22,
+                "Execution / Action Hazard": 10,
+                "Risky Requested Outcome": 1
+            }
+        }
+    }
+}
