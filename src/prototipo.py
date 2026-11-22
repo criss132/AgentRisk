@@ -29,6 +29,7 @@ from src.train_m1 import (
     UMBRAL_SEGUNDA_ETIQUETA,
     seleccionar_etiquetas,
 )
+from src.s3_politicas import POLITICAS, aplicar_politica
 
 EXPERIMENTS_DIR = os.path.join(REPO_ROOT, "experiments")
 DEFAULT_CKPT_DIR = os.path.join(EXPERIMENTS_DIR, "checkpoints", "m1_dev_seed42")
@@ -316,7 +317,7 @@ def predecir(
     }
 
 
-def imprimir_resultado_legible(resultado: dict, titulo: str | None = None):
+def imprimir_resultado_legible(resultado: dict, titulo: str | None = None, politica: str | None = None):
     if titulo:
         print(f"\n--- {titulo} ---")
     print(f"Modelo activo : {resultado['backend']}")
@@ -328,6 +329,9 @@ def imprimir_resultado_legible(resultado: dict, titulo: str | None = None):
     print(f"Top-3 prob S2a : {top_s2a}")
     print(f"Top-3 prob S2b : {top_s2b}")
     print(f"Probs S1       : {resultado['probabilidades']['s1']}")
+    if politica:
+        intervencion = aplicar_politica(politica, resultado["severidad"], resultado["dominios"], resultado["factores"])
+        print(f"Intervención (política {politica}): {intervencion.upper()}")
 
 
 def leer_casos_desde_archivo(ruta_archivo: str) -> list[tuple[str, str | dict]]:
@@ -382,6 +386,7 @@ def parse_args():
     parser.add_argument("--archivo", type=str, default=None, help="Ruta a archivo (.jsonl, .json o .txt) con casos")
     parser.add_argument("--ckpt-dir", type=str, default=DEFAULT_CKPT_DIR, help="Directorio del checkpoint de M1")
     parser.add_argument("--max-len", type=int, default=MAX_LEN_DEFAULT, help="Longitud máxima de tokens (512)")
+    parser.add_argument("--politica", choices=sorted(POLITICAS), default=None, help="Política de S3 (A o B): además del riesgo, imprime la intervención (permitir, confirmar o bloquear)")
     parser.add_argument("--medir-tiempos", action="store_true", help="Mide tiempo de carga en CPU y GPU")
     return parser.parse_args()
 
@@ -401,7 +406,7 @@ def main():
         casos = leer_casos_desde_archivo(args.archivo)
         for eid, caso in casos:
             res = predecir(caso, bundle=bundle, max_len=args.max_len)
-            imprimir_resultado_legible(res, titulo=f"Caso {eid}")
+            imprimir_resultado_legible(res, titulo=f"Caso {eid}", politica=args.politica)
         return
 
     # Modo interactivo por consola
@@ -416,7 +421,7 @@ def main():
         if not entrada or entrada.lower() in {"salir", "exit", "quit"}:
             break
         res = predecir(entrada, bundle=bundle, max_len=args.max_len)
-        imprimir_resultado_legible(res, titulo=f"Resultado #{idx}")
+        imprimir_resultado_legible(res, titulo=f"Resultado #{idx}", politica=args.politica)
         idx += 1
 
 

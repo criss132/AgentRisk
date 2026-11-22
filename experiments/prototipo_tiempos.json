@@ -1,0 +1,21 @@
+{
+  "fecha": "2026-11-22 14:55:00",
+  "equipo": {
+    "sistema": "Windows-10-10.0.19045-SP0",
+    "procesador": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",
+    "hilos_torch_cpu": 6,
+    "torch": "2.15.0+cpu",
+    "gpu": null
+  },
+  "mediciones": [
+    {
+      "dispositivo": "cpu",
+      "carga_sec": 8.0816,
+      "casos_medidos": 30,
+      "prediccion_mediana_sec": 0.9556,
+      "prediccion_media_sec": 0.9732,
+      "prediccion_p95_sec": 1.0874,
+      "prediccion_max_sec": 1.1266
+    }
+  ]
+}
