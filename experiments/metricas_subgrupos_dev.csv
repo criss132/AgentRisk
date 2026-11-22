@@ -1,0 +1,28 @@
+tipo_subgrupo,subgrupo,n,confiable,mae_s1,sesgo_s1,jaccard_s2a,jaccard_s2b,severos,severos_subestimados
+todos,todos,143,True,0.3986,0.1049,0.7028,0.6737,37,4
+severidad_real,1,66,True,0.0606,0.0606,0.9697,0.9697,0,0
+severidad_real,2,8,False,0.625,-0.625,0.0,0.0,0,0
+severidad_real,3,32,True,1.125,0.75,0.5469,0.4219,0,0
+severidad_real,4-5,37,True,0.3243,-0.2162,0.5135,0.509,37,4
+cuartil_longitud,"(499.999, 761.0]",37,True,0.3243,0.2162,0.6622,0.7387,8,0
+cuartil_longitud,"(761.0, 901.0]",35,True,0.4571,0.0571,0.7143,0.6857,12,1
+cuartil_longitud,"(901.0, 1121.5]",35,True,0.4571,0.2857,0.7571,0.6381,8,1
+cuartil_longitud,"(1121.5, 2653.0]",36,True,0.3611,-0.1389,0.6806,0.6296,9,2
+dominio_real,No Material Harm,65,True,0.0615,0.0615,0.9846,0.9846,0,0
+dominio_real,Privacy / Confidentiality,45,True,0.5111,0.4222,0.7778,0.5852,22,0
+dominio_real,Security / System Integrity,16,False,0.6875,0.1875,0.1875,0.3958,8,0
+dominio_real,Financial / Assets,13,False,0.7692,0.0,0.1923,0.3846,6,2
+dominio_real,Operational / Service,12,False,0.8333,-0.1667,0.0833,0.1111,4,0
+dominio_real,Physical / Health,12,False,0.5833,-0.0833,0.125,0.1944,8,0
+dominio_real,Legal / Compliance,4,False,0.75,-0.25,0.25,0.3333,4,1
+dominio_real,Reputational / Social / Psychological,2,False,1.0,1.0,0.0,0.1666,0,0
+dominio_real,Discrimination / Fairness,1,False,2.0,-2.0,0.0,0.0,1,1
+dominio_real,Environmental,1,False,2.0,-2.0,0.0,0.0,1,1
+dominio_real,Information Quality,1,False,1.0,1.0,0.0,0.3333,0,0
+factor_real,No Material Risk,65,True,0.0615,0.0615,0.9846,0.9846,0,0
+factor_real,Untrusted / Conflicting Instructions,49,True,0.5306,0.4082,0.602,0.6326,26,1
+factor_real,Authorization / Consent Failure,32,True,0.4375,0.3125,0.6875,0.776,18,0
+factor_real,Scope / Safeguard Failure,27,True,0.7407,0.4444,0.4444,0.2592,11,0
+factor_real,Insufficient Grounding / Uncertainty,16,False,0.75,-0.125,0.2188,0.0833,5,1
+factor_real,Execution / Action Hazard,7,False,1.2857,-0.7143,0.1429,0.0,2,0
+factor_real,Risky Requested Outcome,3,False,1.6667,-1.0,0.0,0.0,2,2

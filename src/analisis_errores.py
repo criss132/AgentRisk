@@ -37,6 +37,11 @@ ERRORES_CSV_PATH = os.path.join(EXPERIMENTS_DIR, "errores_dev.csv")
 # Solo los casos seleccionados y sin texto del dataset; aquí se escribe la causa a mano.
 SELECCIONADOS_CSV_PATH = os.path.join(EXPERIMENTS_DIR, "errores_dev_seleccionados.csv")
 
+# Métricas por subgrupo (IA responsable): se guardan sin texto del dataset, así que sí se pueden subir.
+SUBGRUPOS_CSV_PATH = os.path.join(EXPERIMENTS_DIR, "metricas_subgrupos_dev.csv")
+# Un subgrupo con menos ejemplos que esto se marca como no confiable.
+MIN_N_CONFIABLE = 20
+
 # Regla de selección, fijada antes de mirar los casos (se documenta en el README).
 N_POR_REGLA = 5
 MINIMO_CASOS = 10
@@ -251,6 +256,64 @@ def reportar_por_longitud(df: pd.DataFrame):
     print("  (n pequeño por cuartil: son pistas, no pruebas)")
 
 
+def _fila_subgrupo(tipo: str, nombre: str, g: pd.DataFrame) -> dict:
+    return {
+        "tipo_subgrupo": tipo,
+        "subgrupo": nombre,
+        "n": int(len(g)),
+        "confiable": bool(len(g) >= MIN_N_CONFIABLE),
+        "mae_s1": round(float(g["error_absoluto"].mean()), 4),
+        "sesgo_s1": round(float(g["error_con_signo"].mean()), 4),
+        "jaccard_s2a": round(float(g["s2a_jaccard"].mean()), 4),
+        "jaccard_s2b": round(float(g["s2b_jaccard"].mean()), 4),
+        "severos": int((g["sev_real"] >= 4).sum()),
+        "severos_subestimados": int(g["severo_subestimado"].sum()),
+    }
+
+
+def reportar_por_subgrupo(df: pd.DataFrame):
+    """
+    Métricas por subgrupo (criterio de IA responsable). Subgrupos fijados antes de mirar los resultados:
+      - severidad real (1, 2, 3 y 4-5)
+      - cuartil de longitud en tokens
+      - dominio de daño real (S2a) y factor de riesgo real (S2b): un ejemplo cuenta en cada etiqueta que tiene
+    Es una sola semilla (42) sobre dev; los subgrupos con menos de MIN_N_CONFIABLE ejemplos se marcan.
+    """
+    filas = [_fila_subgrupo("todos", "todos", df)]
+
+    por_sev = [("1", df["sev_real"] == 1), ("2", df["sev_real"] == 2), ("3", df["sev_real"] == 3), ("4-5", df["sev_real"] >= 4)]
+    for nombre, mascara in por_sev:
+        if mascara.any():
+            filas.append(_fila_subgrupo("severidad_real", nombre, df[mascara]))
+
+    cuartil = pd.qcut(df["longitud_tokens"], 4, duplicates="drop")
+    for intervalo, g in df.groupby(cuartil, observed=True):
+        filas.append(_fila_subgrupo("cuartil_longitud", str(intervalo), g))
+
+    for tipo, col in (("dominio_real", "s2a_real"), ("factor_real", "s2b_real")):
+        listas = df[col].map(lambda s: [x.strip() for x in str(s).split(" | ") if x.strip()])
+        etiquetas = sorted({lbl for fila in listas for lbl in fila})
+        bloque = [
+            _fila_subgrupo(tipo, lbl, df[listas.map(lambda fila, lbl=lbl: lbl in fila)])
+            for lbl in etiquetas
+        ]
+        filas.extend(sorted(bloque, key=lambda r: -r["n"]))
+
+    tabla = pd.DataFrame(filas)
+    tabla.to_csv(SUBGRUPOS_CSV_PATH, index=False, encoding="utf-8")
+
+    print(f"\n=== Métricas por subgrupo (M1, semilla 42, dev; * = n < {MIN_N_CONFIABLE}, no confiable) ===")
+    print(f"{'tipo':<17}{'subgrupo':<40}{'n':>4}  {'MAE S1':>7} {'sesgo':>7} {'J2a':>6} {'J2b':>6}  severos sub./total")
+    for _, r in tabla.iterrows():
+        marca = " " if r["confiable"] else "*"
+        print(
+            f"{r['tipo_subgrupo']:<17}{r['subgrupo']:<40}{r['n']:>4}{marca} {r['mae_s1']:>7.3f} {r['sesgo_s1']:>+7.3f} "
+            f"{r['jaccard_s2a']:>6.3f} {r['jaccard_s2b']:>6.3f}  {r['severos_subestimados']}/{r['severos']}"
+        )
+    print(f"Archivo generado: {SUBGRUPOS_CSV_PATH}")
+    print("  (los datos no traen atributos de personas: se mide entre tipos de caso, no entre grupos humanos)")
+
+
 def verificar_contra_referencia(df: pd.DataFrame):
     """Compara con la cifra de la semilla 42 y los umbrales elegidos guardada en umbrales_resultados.json."""
     try:
@@ -405,6 +468,7 @@ def main():
     reportar_confusiones_s2(df_errores, "s2a_real", "s2a_pred", top_k=8)
     reportar_confusiones_s2(df_errores, "s2b_real", "s2b_pred", top_k=8)
     reportar_por_longitud(df_errores)
+    reportar_por_subgrupo(df_errores)
 
     print(f"\n=== Casos seleccionados ({len(motivos)} únicos; regla: {N_POR_REGLA} por criterio, desempate por example_id) ===")
     for ex in sorted(motivos):
