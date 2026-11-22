@@ -1,0 +1,43 @@
+{
+    "model": "M2",
+    "ollama_model": "qwen2.5:3b",
+    "modo": "zero-shot",
+    "seed": 42,
+    "temperature": 0.0,
+    "num_ctx": 6144,
+    "ollama_url": "http://localhost:11434/api/generate",
+    "output_predictions_file": "experiments\\m2_zero-shot_qwen2.5-3b_dev.jsonl",
+    "json_schema_enum_used": true,
+    "date": "2026-11-22 11:45:40",
+    "n_dev_target": 143,
+    "n_dev_evaluated": 143,
+    "few_shot_config": {
+        "enabled": false,
+        "target_severities": [],
+        "selected_severities": [],
+        "selected_example_ids": [],
+        "max_chars_per_shot": 1600
+    },
+    "context_usage": {
+        "max_prompt_eval_count": 3350,
+        "mean_prompt_eval_count": 1544.5,
+        "max_prompt_chars": 12204,
+        "char_warning_threshold": 19353,
+        "prompts_over_char_threshold": 0,
+        "approx_chars_per_token": 3.5
+    },
+    "invalid_responses": {
+        "examples_with_invalid_or_fallback_pct": 0.0,
+        "examples_with_invalid_or_fallback_count": 0,
+        "total_invalid_items_or_fields": 0,
+        "malformed_json_responses": 0,
+        "total_records_in_jsonl": 143,
+        "fallback_note": "Cuando falla el JSON o quedan etiquetas/severidad inválidas sin reemplazo válido, se aplica fallback (severidad 2 y etiqueta por defecto), lo que puede sumar subestimación en casos severos."
+    },
+    "metrics": {
+        "s1_mae": 1.2937,
+        "severe_underestimation_pct": 89.19,
+        "s2a_jaccard": 0.3555,
+        "s2b_jaccard": 0.1818
+    }
+}
