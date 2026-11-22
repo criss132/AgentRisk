@@ -1,0 +1,67 @@
+{
+    "model": "M1",
+    "backbone": "microsoft/deberta-v3-base",
+    "eval_split": "dev",
+    "fold": null,
+    "mode_rapido": false,
+    "saved_artifacts_dir": null,
+    "seed": 44,
+    "date": "2026-11-22 04:11:34",
+    "training_time_sec": 350.8,
+    "final_fp16_enabled": true,
+    "last_epoch_train_loss": 0.9617,
+    "versions": {
+        "torch": "2.11.0+cu130",
+        "transformers": "5.20.2"
+    },
+    "hyperparameters": {
+        "max_len": 512,
+        "truncation_side": "left",
+        "batch_size": 4,
+        "grad_accum": 4,
+        "effective_batch_size": 16,
+        "learning_rate": 2e-05,
+        "epochs": 9,
+        "warmup_ratio": 0.1,
+        "steps_per_epoch": 36,
+        "total_steps": 324,
+        "threshold_second_label": 0.3,
+        "s1_class_weights": [
+            0.4287,
+            3.4424,
+            0.8945,
+            0.8353,
+            16.2286
+        ]
+    },
+    "classes": {
+        "s2a_domains": [
+            "Discrimination / Fairness",
+            "Environmental",
+            "Financial / Assets",
+            "Information Quality",
+            "Legal / Compliance",
+            "No Material Harm",
+            "Operational / Service",
+            "Physical / Health",
+            "Privacy / Confidentiality",
+            "Reputational / Social / Psychological",
+            "Security / System Integrity"
+        ],
+        "s2b_drivers": [
+            "Authorization / Consent Failure",
+            "Execution / Action Hazard",
+            "Insufficient Grounding / Uncertainty",
+            "No Material Risk",
+            "Risky Requested Outcome",
+            "Scope / Safeguard Failure",
+            "Untrusted / Conflicting Instructions"
+        ]
+    },
+    "metrics": {
+        "s1_mae": 0.3357,
+        "severe_underestimation_pct": 10.81,
+        "s2a_jaccard": 0.6865,
+        "s2b_jaccard": 0.6713
+    }
+}

@@ -1,12 +1,15 @@
 {
     "model": "M1",
     "backbone": "microsoft/deberta-v3-base",
+    "eval_split": "dev",
+    "fold": null,
     "mode_rapido": false,
+    "saved_artifacts_dir": "experiments/checkpoints/m1_dev_seed42",
     "seed": 42,
-    "date": "2026-11-22 01:36:11",
-    "training_time_sec": 371.69,
+    "date": "2026-11-22 03:34:09",
+    "training_time_sec": 352.18,
     "final_fp16_enabled": true,
-    "last_epoch_train_loss": 0.9961,
+    "last_epoch_train_loss": 0.9965,
     "versions": {
         "torch": "2.11.0+cu130",
         "transformers": "5.20.2"
