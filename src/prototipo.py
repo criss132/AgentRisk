@@ -1,3 +1,9 @@
+"""Prototipo de línea de comandos del monitor AgentRisk.
+
+Carga M1 sin conexión (con respaldo en L1), predice severidad, dominios y factores de
+una trayectoria y aplica una política de S3 (A o B) para decidir la intervención.
+Uso: python src/prototipo.py --politica A|B [--archivo casos.jsonl]
+"""
 import os
 import sys
 import json
@@ -207,7 +213,7 @@ def construir_respaldo_l1(train_path: str = TRAIN_PATH) -> dict:
 
 
 def cargar_con_respaldo(ckpt_dir: str = DEFAULT_CKPT_DIR, device: torch.device | None = None) -> dict:
-    """Intenta cargar M1; si ocurre cualquier error, activa el respaldo en L1."""
+    """Carga M1; si falla, entrena L1 como respaldo. Antes de la demo, comprobar que 'Modelo activo' diga M1."""
     try:
         return cargar_m1(ckpt_dir=ckpt_dir, device=device)
     except Exception as exc:
@@ -216,6 +222,7 @@ def cargar_con_respaldo(ckpt_dir: str = DEFAULT_CKPT_DIR, device: torch.device |
 
 
 def _predecir_severidad_con_tau(probs_s1: np.ndarray, tau: float | None) -> int:
+    """Severidad 1-5: si P(4)+P(5) supera tau devuelve 4 o 5; si no, el argmax entre 1 y 3."""
     if tau is not None and len(probs_s1) >= 5:
         p_alta = float(probs_s1[3] + probs_s1[4])
         if p_alta > float(tau):
@@ -318,6 +325,7 @@ def predecir(
 
 
 def imprimir_resultado_legible(resultado: dict, titulo: str | None = None, politica: str | None = None):
+    """Muestra en pantalla la predicción y, si se indica, la intervención de la política."""
     if titulo:
         print(f"\n--- {titulo} ---")
     print(f"Modelo activo : {resultado['backend']}")
@@ -382,6 +390,7 @@ def medir_tiempos_carga(ckpt_dir: str = DEFAULT_CKPT_DIR) -> dict:
 
 
 def parse_args():
+    """Lee los argumentos de la línea de comandos."""
     parser = argparse.ArgumentParser(description="Prototipo de inferencia offline para M1 (con respaldo L1)")
     parser.add_argument("--archivo", type=str, default=None, help="Ruta a archivo (.jsonl, .json o .txt) con casos")
     parser.add_argument("--ckpt-dir", type=str, default=DEFAULT_CKPT_DIR, help="Directorio del checkpoint de M1")
@@ -392,6 +401,7 @@ def parse_args():
 
 
 def main():
+    """Carga el modelo y predice casos de un archivo o en modo interactivo."""
     args = parse_args()
 
     if args.medir_tiempos:

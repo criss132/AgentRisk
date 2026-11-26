@@ -1,3 +1,7 @@
+"""Análisis de errores de M1 en dev: casos con mayor error y métricas por subgrupo.
+
+Escribe experiments/errores_dev*.csv y experiments/metricas_subgrupos_dev.csv.
+"""
 import os
 import sys
 import json
@@ -64,6 +68,7 @@ TOL_JACCARD = 0.002
 
 
 def cargar_predicciones_m1_dev(ruta_jsonl: str = M1_DEV_PREDS_PATH) -> dict[str, dict]:
+    """Lee las probabilidades de M1 en dev (JSONL) indexadas por example_id."""
     if not os.path.exists(ruta_jsonl):
         raise FileNotFoundError(f"No se encontró {ruta_jsonl}")
     preds = {}
@@ -257,6 +262,7 @@ def reportar_por_longitud(df: pd.DataFrame):
 
 
 def _fila_subgrupo(tipo: str, nombre: str, g: pd.DataFrame) -> dict:
+    """Métricas de un subgrupo: n, MAE, sesgo, Jaccard y casos graves subestimados."""
     return {
         "tipo_subgrupo": tipo,
         "subgrupo": nombre,
@@ -358,6 +364,7 @@ def imprimir_frecuencias_train():
 
 
 def main():
+    """Genera los casos del análisis de errores del informe y las métricas por subgrupo."""
     ruta_dev = DEV_PATH if os.path.isabs(DEV_PATH) else os.path.join(REPO_ROOT, DEV_PATH)
     dev_df = pd.read_json(ruta_dev, lines=True)
     preds_map = cargar_predicciones_m1_dev(M1_DEV_PREDS_PATH)

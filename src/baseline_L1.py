@@ -1,3 +1,7 @@
+"""Línea base L1 para S1: TF-IDF + regresión logística, con y sin pesos de clase.
+
+Se evalúa en dev y los resultados se guardan en experiments/l1_s1_resultados.json.
+"""
 import os
 import json
 from datetime import datetime
@@ -22,6 +26,7 @@ def calcular_subestimacion(y_real, y_pred):
     return 0.0
 
 def main():
+    """Entrena L1 (con y sin pesos de clase) en train, evalúa en dev y guarda los resultados."""
     print("=== EJECUCIÓN DEL MODELO BASE L1 (S1: Severidad) ===")
     
     # 2. Cargar y separar X, y

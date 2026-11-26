@@ -1,3 +1,8 @@
+"""Elige los umbrales de decisión (S1: tau; S2a y S2b: segunda etiqueta) y los confirma en dev.
+
+La elección usa solo las predicciones fuera de muestra de la validación cruzada.
+Resultado: experiments/umbrales_resultados.json.
+"""
 import os
 import json
 from datetime import datetime
@@ -45,7 +50,7 @@ PARAMS_ESTIMATOR = {
 
 
 def jaccard(real, pred):
-    """Calcula el índice de Jaccard entre dos listas de etiquetas como conjuntos."""
+    """Jaccard entre etiquetas reales y predichas (métrica de S2a y S2b)."""
     set_real = set(real)
     set_pred = set(pred)
     if len(set_real) == 0 and len(set_pred) == 0:
@@ -104,6 +109,7 @@ def predecir_s1_con_tau(probs_s1: list[float] | np.ndarray, tau: float) -> int:
 
 
 def calcular_metricas_s1(y_real: np.ndarray, y_pred: np.ndarray) -> dict:
+    """MAE y porcentaje de subestimación grave (severidad real >= 4 predicha <= 2) de S1."""
     mae = float(np.mean(np.abs(y_real - y_pred)))
     severe_mask = y_real >= 4
     if np.sum(severe_mask) > 0:
@@ -412,7 +418,7 @@ def evaluar_cuadricula_s1(df: pd.DataFrame, taus: list[float]) -> list[dict]:
 
 
 def elegir_tau_s1(grid_s1: list[dict], max_subest: float = MAX_SUBESTIMACION_PERMITIDA) -> tuple[float, str]:
-    """Aplica el criterio declarado: menor MAE con subestimación severa <= max_subest."""
+    """Elige tau de S1: menor MAE en OOF con subestimación grave <= 10 % (criterio declarado en el informe)."""
     candidatos = [row for row in grid_s1 if row["severe_underestimation_pct"] <= max_subest]
     if candidatos:
         elegido = min(candidatos, key=lambda r: (r["s1_mae"], r["severe_underestimation_pct"], r["tau"]))
@@ -425,6 +431,7 @@ def elegir_tau_s1(grid_s1: list[dict], max_subest: float = MAX_SUBESTIMACION_PER
 
 
 def resumir_semillas(per_seed: dict[str, dict]) -> dict:
+    """Media y desviación estándar de cada métrica entre semillas."""
     resumen = {}
     for metrica in ["s1_mae", "severe_underestimation_pct", "s2a_jaccard", "s2b_jaccard"]:
         vals = np.array([per_seed[s][metrica] for s in per_seed], dtype=np.float64)
@@ -442,7 +449,7 @@ def procesar_m1(
     classes_s2a: list[str],
     classes_s2b: list[str],
 ) -> dict:
-    """Evalúa M1 sin ajuste en OOF, selecciona umbrales en OOF y confirma en dev (3 semillas)."""
+    """M1: elige tau de S1 y umbrales de S2a/S2b en OOF (5 folds) y los confirma en dev con las 3 semillas (42-44)."""
     sin_ajuste_oof = evaluar_predicciones_df(
         df=oof_df,
         classes_s2a=classes_s2a,
@@ -547,7 +554,7 @@ def procesar_l1_corrida_unica(
     classes_s2b: list[str],
     seed: int = SEMILLA,
 ) -> dict:
-    """Evalúa L1 (corrida única) sin ajuste en OOF, selecciona umbrales en OOF y confirma en dev."""
+    """L1: mismo procedimiento que M1 (OOF y confirmación en dev), pero con una sola corrida."""
     sin_ajuste_oof = evaluar_predicciones_df(
         df=oof_df,
         classes_s2a=classes_s2a,
@@ -641,6 +648,7 @@ def procesar_l1_corrida_unica(
 
 
 def main():
+    """Elige los umbrales en validación cruzada, los confirma en dev y guarda el resultado."""
     print("=== SELECCIÓN DE UMBRALES EN OOF (5 FOLDS) Y CONFIRMACIÓN EN DEV (M1 Y L1) ===")
 
     train_df = pd.read_json(TRAIN_PATH, lines=True)

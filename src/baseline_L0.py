@@ -1,3 +1,7 @@
+"""Línea base L0: mediana de severidad (S1) y etiqueta más frecuente (S2) aprendidas en train.
+
+Se evalúa en dev y los resultados se guardan en experiments/l0_resultados.json.
+"""
 import os
 import json
 from datetime import datetime
@@ -31,6 +35,7 @@ def jaccard(real, pred):
     return intersec / union
 
 def main():
+    """Calcula L0 con train, lo evalúa en dev y guarda los resultados."""
     print("=== EJECUCIÓN DEL MODELO BASE L0 ===")
     
     # --- 1. CARGAR DATOS ---

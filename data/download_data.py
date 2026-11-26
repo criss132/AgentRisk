@@ -8,6 +8,7 @@ destino = "data/raw"
 archivos = ["data/train.jsonl", "data/dev.jsonl", "metadata/split_manifest.jsonl"]
 
 def download_data():
+    """Descarga train, dev y el manifiesto de particiones desde Hugging Face a data/raw/."""
     for archivo in archivos:
         hf_hub_download(repo_id=repo, repo_type=tipo, filename=archivo, local_dir=destino)
         

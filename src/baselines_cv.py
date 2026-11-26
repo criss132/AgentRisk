@@ -1,3 +1,7 @@
+"""Validación cruzada de 5 folds de L0 y L1 sobre train, con los mismos folds que M1.
+
+Usa data/splits/train_folds.csv y guarda l0_cv_resultados.json y l1_cv_resultados.json.
+"""
 import os
 import json
 from datetime import datetime
@@ -34,7 +38,7 @@ PARAMS_ESTIMATOR = {
 
 
 def jaccard(real, pred):
-    """Calcula el índice de Jaccard entre dos listas de etiquetas como conjuntos."""
+    """Jaccard entre etiquetas reales y predichas (métrica de S2a y S2b)."""
     set_real = set(real)
     set_pred = set(pred)
     if len(set_real) == 0 and len(set_pred) == 0:
@@ -180,6 +184,7 @@ def evaluar_l1_fold(
 
 
 def main():
+    """Ejecuta la validación cruzada de L0 y L1 y guarda los resultados por fold y el resumen."""
     print("=== VALIDACIÓN CRUZADA (5 FOLDS) — BASELINES L0 Y L1 ===")
 
     # 1. Cargar train.jsonl y train_folds.csv y unir por example_id

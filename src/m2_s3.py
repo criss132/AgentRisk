@@ -47,6 +47,7 @@ UMBRAL_F1 = 0.10  # umbral del Hito 1: el monitor debe superar a la línea base 
 
 
 def construir_esquema() -> dict:
+    """Esquema JSON que obliga al modelo a responder allow, confirm o block."""
     return {
         "type": "object",
         "properties": {"intervention": {"type": "string", "enum": list(TRADUCCION)}},
@@ -99,6 +100,7 @@ def interpretar_respuesta(texto: str, ok: bool) -> tuple[str, bool]:
 
 
 def parse_args():
+    """Lee los argumentos de la línea de comandos."""
     ap = argparse.ArgumentParser(description="S3, línea base: LLM con un solo prompt y sin monitor.")
     ap.add_argument("--politica", choices=sorted(POLITICAS), required=True)
     ap.add_argument("--modelo", default=MODELO_DEFAULT)
@@ -107,6 +109,7 @@ def parse_args():
 
 
 def main():
+    """Recorre dev, consulta al LLM con la política elegida y guarda sus intervenciones y métricas."""
     args = parse_args()
     if not os.path.exists(REFERENCIA_CSV_PATH):
         raise FileNotFoundError(f"No se encontró {REFERENCIA_CSV_PATH}. Ejecuta primero `python src/s3_evaluar.py`.")

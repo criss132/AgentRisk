@@ -34,6 +34,7 @@ SALIDA_PATH = os.path.join(REPO_ROOT, "experiments", "prototipo_tiempos.json")
 
 
 def leer_textos_dev(n: int) -> list[str]:
+    """Lee las primeras n trayectorias de dev."""
     textos = []
     with open(DEV_PATH, "r", encoding="utf-8") as f:
         for linea in f:
@@ -45,11 +46,13 @@ def leer_textos_dev(n: int) -> list[str]:
 
 
 def sincronizar(device: torch.device):
+    """Espera a que termine el trabajo pendiente en GPU para medir tiempos reales (no hace nada en CPU)."""
     if device.type == "cuda":
         torch.cuda.synchronize()
 
 
 def medir_dispositivo(device: torch.device, calentar: list[str], textos: list[str], ckpt_dir: str) -> dict:
+    """Carga M1 en un dispositivo, calienta y mide el tiempo de carga y de predicción por caso."""
     bundle = cargar_m1(ckpt_dir=ckpt_dir, device=device)
     for t in calentar:
         predecir(t, bundle=bundle)
@@ -81,6 +84,7 @@ def medir_dispositivo(device: torch.device, calentar: list[str], textos: list[st
 
 
 def main():
+    """Mide CPU y, si hay, GPU, y guarda experiments/prototipo_tiempos.json."""
     ap = argparse.ArgumentParser(description="Tiempos de carga y predicción del prototipo (M1).")
     ap.add_argument("--n", type=int, default=30, help="Casos de dev a predecir en cada dispositivo.")
     ap.add_argument("--calentamiento", type=int, default=3, help="Predicciones previas que no se cuentan.")

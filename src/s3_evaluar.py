@@ -27,6 +27,7 @@ RESULTADOS_PATH = os.path.join(REPO_ROOT, "experiments", "s3_monitor_resultados.
 
 
 def separar_etiquetas(texto) -> list[str]:
+    """Convierte un texto 'a | b' en la lista de etiquetas ['a', 'b']."""
     return [x.strip() for x in str(texto).split(" | ") if x.strip()]
 
 
@@ -51,6 +52,7 @@ def metricas_por_clase(y_real: list[str], y_pred: list[str]) -> dict:
 
 
 def main():
+    """Compara la intervención del monitor (M1 con los umbrales elegidos) con la de referencia, para las políticas A y B."""
     dev = {}
     with open(DEV_PATH, "r", encoding="utf-8") as f:
         for linea in f:

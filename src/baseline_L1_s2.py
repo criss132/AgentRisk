@@ -1,3 +1,7 @@
+"""Línea base L1 para S2a y S2b: TF-IDF + regresión logística uno-contra-resto.
+
+Se evalúa en dev con Jaccard y los resultados se guardan en experiments/l1_s2_resultados.json.
+"""
 import os
 import json
 from datetime import datetime
@@ -39,7 +43,7 @@ TAREAS = [
 
 
 def jaccard(real, pred):
-    """Calcula el índice de Jaccard entre dos listas de etiquetas como conjuntos."""
+    """Jaccard entre etiquetas reales y predichas (métrica de S2a y S2b)."""
     set_real = set(real)
     set_pred = set(pred)
 
@@ -70,6 +74,7 @@ def seleccionar_etiquetas(probs_fila, classes, umbral):
 
 
 def main():
+    """Entrena L1 para S2a y S2b en train, evalúa en dev y guarda los resultados."""
     print("=== EJECUCIÓN DEL MODELO BASE L1 (S2a y S2b: Multilabel) ===")
 
     # 1. Cargar datos

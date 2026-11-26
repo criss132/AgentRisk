@@ -1,3 +1,5 @@
+"""Comprueba que M1, guardado y recargado sin conexión, reproduce las predicciones de la corrida de entrenamiento.
+"""
 import os
 import sys
 import json
@@ -27,6 +29,7 @@ TOL_ACEPTABLE = 1e-2
 
 
 def cargar_referencia_por_id(ruta_jsonl: str) -> dict[str, dict]:
+    """Lee un JSONL y devuelve sus registros indexados por example_id."""
     ref = {}
     with open(ruta_jsonl, "r", encoding="utf-8") as f:
         for linea in f:
@@ -61,6 +64,7 @@ def decisiones_desde_referencia(ref: dict, umbrales: dict, classes_s2a: np.ndarr
 
 
 def main():
+    """Recarga M1, repite las predicciones y compara con las guardadas."""
     if not os.path.exists(PREDS_REF_PATH):
         raise FileNotFoundError(f"No se encontró {PREDS_REF_PATH} para comparar.")
 

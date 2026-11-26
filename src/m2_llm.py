@@ -1,3 +1,7 @@
+"""M2: LLM abierto local (Ollama, qwen2.5:3b) para S1, S2a y S2b, en modo cero-shot o few-shot.
+
+Evalúa en dev y guarda predicciones y resultados en experiments/.
+"""
 import os
 import re
 import json
@@ -44,7 +48,7 @@ def obtener_rutas_salida(modo: str, modelo: str) -> tuple[str, str]:
 
 
 def jaccard(real, pred):
-    """Calcula el índice de Jaccard entre dos listas de etiquetas como conjuntos."""
+    """Jaccard entre etiquetas reales y predichas (métrica de S2a y S2b)."""
     set_real = set(real)
     set_pred = set(pred)
     if len(set_real) == 0 and len(set_pred) == 0:
@@ -275,6 +279,7 @@ def _enviar_peticion_ollama(
     semilla: int,
     timeout: int,
 ) -> dict:
+    """Hace una petición POST a la API de Ollama y devuelve el JSON de respuesta."""
     payload = {
         "model": modelo,
         "prompt": prompt,
@@ -520,6 +525,7 @@ def calcular_metricas_4(df_eval: pd.DataFrame, preds_by_id: dict[str, dict]) -> 
 
 
 def parse_args():
+    """Lee los argumentos de la línea de comandos."""
     parser = argparse.ArgumentParser(description="Evaluación M2 con Ollama en dev")
     parser.add_argument(
         "--modo",
@@ -544,6 +550,7 @@ def parse_args():
 
 
 def main():
+    """Recorre dev, consulta al modelo y guarda predicciones y métricas."""
     args = parse_args()
     os.makedirs(EXPERIMENTS_DIR, exist_ok=True)
 

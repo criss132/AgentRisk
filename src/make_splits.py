@@ -1,3 +1,7 @@
+"""Crea los 5 folds de validación cruzada, agrupados por scenario_group y estratificados por severidad.
+
+Resultado: data/splits/train_folds.csv (example_id y fold).
+"""
 import pandas as pd
 from sklearn.model_selection import StratifiedGroupKFold
 
@@ -7,6 +11,7 @@ N_FOLDS = 5
 
 def main():
     # 1. Cargar train y el manifest, y unir el scenario_group por example_id
+    """Genera los folds, los guarda y muestra comprobaciones de calidad (sin fuga entre folds)."""
     print("Cargando datos...")
     train = pd.read_json("data/raw/data/train.jsonl", lines=True)
     manifest = pd.read_json("data/raw/metadata/split_manifest.jsonl", lines=True)

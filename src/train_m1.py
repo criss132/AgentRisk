@@ -1,3 +1,8 @@
+"""Entrena M1 (DeBERTa-v3-base multitarea) para S1, S2a y S2b.
+
+Guarda métricas, predicciones por ejemplo y, con --guardar, los pesos.
+Uso (desde la raíz del repositorio): python src/train_m1.py [--fold N] [--seed S] [--guardar] [--rapido]
+"""
 import os
 
 # 1. Restringir a una sola GPU antes de importar torch
@@ -45,6 +50,7 @@ ARTIFACTS_BASE_DIR = os.path.join(OUTPUT_DIR, "checkpoints")
 
 
 def set_seed(seed: int):
+    """Fija las semillas de random, NumPy y PyTorch para reproducir la corrida."""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -52,6 +58,7 @@ def set_seed(seed: int):
 
 
 def jaccard(real, pred):
+    """Índice de Jaccard entre dos listas de etiquetas (1.0 si ambas están vacías)."""
     set_real = set(real)
     set_pred = set(pred)
     if len(set_real) == 0 and len(set_pred) == 0:
@@ -63,6 +70,7 @@ def jaccard(real, pred):
 
 
 def seleccionar_etiquetas(probs_fila, classes, umbral=UMBRAL_SEGUNDA_ETIQUETA):
+    """Elige la etiqueta más probable y añade la segunda si su probabilidad es >= umbral."""
     indices_ordenados = np.argsort(probs_fila)[::-1]
     elegidos_idx = [indices_ordenados[0]]
     if len(indices_ordenados) > 1:
@@ -73,7 +81,7 @@ def seleccionar_etiquetas(probs_fila, classes, umbral=UMBRAL_SEGUNDA_ETIQUETA):
 
 
 def verificar_truncamiento_izquierda(texts, tokenizer, max_len):
-    """Toma el texto más largo y verifica que tras truncar conserva el final."""
+    """Comprueba que el recorte por la izquierda conserva la acción propuesta (el final de la trayectoria)."""
     textos_lista = list(texts)
     if not textos_lista:
         return
@@ -94,6 +102,7 @@ def verificar_truncamiento_izquierda(texts, tokenizer, max_len):
 
 
 def compute_s1_weights(y_s1_indices: np.ndarray, device: torch.device) -> tuple[np.ndarray, torch.Tensor]:
+    """Pesos balanceados para S1: las severidades 4-5 son raras en train y las más costosas de subestimar."""
     clases_presentes = np.unique(y_s1_indices)
     pesos_calculados = compute_class_weight(
         class_weight="balanced",
@@ -107,6 +116,7 @@ def compute_s1_weights(y_s1_indices: np.ndarray, device: torch.device) -> tuple[
 
 
 def get_run_tag(fold: int | None, seed: int) -> str:
+    """Nombre de la corrida, usado para la carpeta de pesos (según fold y semilla)."""
     if fold is not None:
         return f"m1_cv_fold{fold}_seed{seed}"
     if seed == SEED_DEFAULT:
@@ -115,6 +125,7 @@ def get_run_tag(fold: int | None, seed: int) -> str:
 
 
 def get_output_paths(fold: int | None, seed: int) -> tuple[str, str]:
+    """Rutas del JSON de métricas y del JSONL de predicciones según fold y semilla."""
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     if fold is not None:
         base = f"m1_cv_fold{fold}_seed{seed}"
@@ -137,6 +148,7 @@ def save_model_artifacts(
     classes_s2b: np.ndarray,
     save_dir: str,
 ):
+    """Guarda pesos, configuración del encoder, tokenizador y clases para cargar M1 sin conexión."""
     os.makedirs(save_dir, exist_ok=True)
 
     # 1. Pesos completos del modelo multitarea (codificador + cabezales S1, S2a, S2b)
@@ -171,6 +183,7 @@ def save_model_artifacts(
 
 
 class MultiTaskDataset(Dataset):
+    """Dataset de PyTorch: tokeniza cada texto (truncado por la izquierda) y devuelve sus etiquetas si existen."""
     def __init__(self, texts, tokenizer, max_len, y_s1=None, y_s2a=None, y_s2b=None):
         self.texts = list(texts)
         self.tokenizer = tokenizer
@@ -183,6 +196,7 @@ class MultiTaskDataset(Dataset):
         return len(self.texts)
 
     def __getitem__(self, idx):
+        """Devuelve los tensores de entrada del ejemplo idx (y sus etiquetas, si existen)."""
         encoded = self.tokenizer(
             self.texts[idx],
             truncation=True,
@@ -202,7 +216,9 @@ class MultiTaskDataset(Dataset):
 
 
 class DebertaMultiTask(nn.Module):
+    """M1: DeBERTa-v3-base compartido y tres cabezas lineales sobre [CLS] (S1: 5 clases; S2a: 11 y S2b: 7, sigmoide)."""
     def __init__(self, model_name, num_s1=5, num_s2a=11, num_s2b=7, dropout_prob=0.1, config=None, cargar_preentrenado=True):
+        """Crea el encoder (preentrenado o desde la configuración) y las tres cabezas lineales."""
         super().__init__()
         self.config = config if config is not None else AutoConfig.from_pretrained(model_name)
         if cargar_preentrenado:
@@ -225,6 +241,7 @@ class DebertaMultiTask(nn.Module):
         self.head_s2b = nn.Linear(hidden_size, num_s2b)
 
     def forward(self, input_ids, attention_mask):
+        """Devuelve los logits de S1, S2a y S2b a partir del token [CLS]."""
         outputs = self.encoder(input_ids=input_ids, attention_mask=attention_mask)
         cls_repr = self.dropout(outputs.last_hidden_state[:, 0, :])
         logits_s1 = self.head_s1(cls_repr)
@@ -234,6 +251,7 @@ class DebertaMultiTask(nn.Module):
 
 
 def parse_args():
+    """Lee los argumentos de la línea de comandos."""
     parser = argparse.ArgumentParser(description="Entrenamiento multi-tarea M1 con DeBERTa-v3-base")
     parser.add_argument("--rapido", action="store_true", help="Modo rápido: 64 ejemplos, 1 época, 128 tokens")
     parser.add_argument("--fold", type=int, default=None, help="Índice de fold (0..4) para validación cruzada")
@@ -257,6 +275,7 @@ def evaluate_split(
     y_eval_s2a_listas,
     y_eval_s2b_listas,
 ):
+    """Evalúa sin umbrales ajustados (los ajustados se aplican después en seleccionar_umbrales.py) y devuelve métricas y probabilidades."""
     model.eval()
     probs_s1_list, probs_s2a_list, probs_s2b_list = [], [], []
 
@@ -303,6 +322,7 @@ def evaluate_split(
 
 
 def main():
+    """Entrena M1 (por fold o con todo train), evalúa en dev y guarda métricas, probabilidades por ejemplo y, con --guardar, los pesos."""
     args = parse_args()
 
     max_len = 128 if args.rapido else args.max_len
