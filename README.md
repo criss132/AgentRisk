@@ -11,26 +11,20 @@ Dado el historial de una interacción entre un usuario y un agente, y la acción
 | S2b | Origen del riesgo (1 o 2 de 7 etiquetas) | Jaccard medio |
 | S3 | Intervención guiada por política | F1 macro, con políticas y casos propios |
 
-**Estado: Hito 3 (en curso).** Datos, particiones por grupos, líneas base L0 y L1 y M1 (DeBERTa-v3 base multitarea) evaluados en `dev` y con validación cruzada de 5 folds, y umbrales de decisión elegidos con los folds y confirmados en `dev`. Con M2 (qwen2.5:3b local, zero-shot y few-shot) evaluado en `dev`. También están hechos el análisis de errores, las métricas por subgrupo y S3 (monitor y línea base con LLM). Faltan los tiempos y la demo del prototipo y el informe.
+**Estado: Hito 3 (entrega final).** Datos, particiones por grupos, líneas base L0 y L1 y M1 (DeBERTa-v3 base multitarea) evaluados en `dev` y con validación cruzada de 5 folds, y umbrales de decisión elegidos con los folds y confirmados en `dev`. Con M2 (qwen2.5:3b local, zero-shot y few-shot) evaluado en `dev`. También están hechos el análisis de errores, las métricas por subgrupo y S3 (monitor y línea base con LLM). El prototipo (consola e interfaz web local) y sus tiempos están medidos. El informe IEEE está en `docs/informe/`.
 
 ## Cómo reproducir los resultados
 
-Requiere Python 3.14 y Git. Probado en Windows (PowerShell) con Python 3.14.5. Desde una carpeta vacía:
+Requiere Python 3.14 y Git. Probado en Windows (PowerShell) con Python 3.14.5. Desde una carpeta vacía, en 4 comandos:
 
 ```powershell
-# 1. Clonar el repositorio
-git clone https://github.com/criss132/AgentRisk.git; cd AgentRisk
-# 2. Crear el entorno e instalar dependencias
-python -m venv .venv; .venv\Scripts\Activate.ps1; pip install -r requirements.txt
-# 3. Descargar los datos (obligatorio: los datos no están en el repositorio)
-python data/download_data.py
-# 4. Particiones y líneas base
-python src/make_splits.py; python src/baseline_L0.py; python src/baseline_L1.py; python src/baseline_L1_s2.py
-# 5. Líneas base con los mismos folds y selección de umbrales (usa las predicciones de M1 guardadas en experiments/)
-python src/baselines_cv.py; python src/seleccionar_umbrales.py
+git clone https://github.com/criss132/AgentRisk.git
+cd AgentRisk
+pip install -r requirements.txt
+python src/reproducir.py
 ```
 
-En Linux o macOS, la activación del entorno es `source .venv/bin/activate`.
+`src/reproducir.py` descarga los datos (no están en el repositorio), crea las particiones, corre las líneas base L0 y L1, la validación cruzada y la selección de umbrales (esta usa las predicciones de M1 ya guardadas en `experiments/`). Es recomendable crear antes un entorno virtual (`python -m venv .venv` y activarlo con `.venv\Scripts\Activate.ps1`; en Linux o macOS, `source .venv/bin/activate`). Los pasos sueltos siguen disponibles: `python data/download_data.py`, `python src/make_splits.py`, `python src/baseline_L0.py`, `python src/baseline_L1.py`, `python src/baseline_L1_s2.py`, `python src/baselines_cv.py` y `python src/seleccionar_umbrales.py`.
 
 **Prototipo.** `src/prototipo.py` carga M1 sin conexión desde `experiments/checkpoints/m1_dev_seed42/` (los pesos, 702 MB, no están en el repositorio y se entregan aparte). `requirements.txt` instala `torch` en su versión de CPU. Para comprobar que la recarga reproduce las predicciones guardadas: `python src/prueba_recarga.py` (en PowerShell, `$env:CUDA_VISIBLE_DEVICES="-1"; $env:HF_HUB_OFFLINE="1"` antes, para forzar CPU y sin conexión).
 
@@ -41,7 +35,7 @@ python src/prototipo.py --politica A
 python src/prototipo.py --politica B --archivo ruta\casos.jsonl
 ```
 
-El Hito 1 anunciaba una app web (Streamlit o Gradio); el prototipo entregado es una herramienta de línea de comandos.
+**Interfaz web (opcional).** Con Gradio, en local: `pip install -r requirements-app.txt` y `python src/app_gradio.py`, y se abre en http://127.0.0.1:7860. Se pega una trayectoria, se elige la política (o ninguna) y muestra el modelo activo, la severidad, los dominios, los factores, la intervención y las probabilidades de S1. Usa el mismo M1 y los mismos umbrales que la consola; si los pesos faltan, usa el respaldo en L1 y lo indica en «Modelo activo». Los casos de la demostración (064 y 051 de `dev`) aparecen como ejemplos si los datos están descargados.
 
 **Tiempos del prototipo** (`python src/medir_tiempos.py`, 30 casos de `dev` de a uno, CPU de 6 hilos con `torch` 2.15 solo CPU; la GPU no se midió porque el entorno instala la versión de CPU): carga de M1 en 8.1 s y predicción por caso con mediana de 0.96 s (p95 de 1.09 s). La entrada se trunca a 512 tokens, así que la latencia casi no depende del largo de la trayectoria. Resultados en `experiments/prototipo_tiempos.json`.
 
@@ -228,6 +222,8 @@ src/seleccionar_umbrales.py elige umbrales en los folds y los confirma en dev (M
 src/m2_llm.py              M2: LLM abierto local con Ollama (zero-shot y few-shot)
 src/analisis_errores.py     análisis de errores de M1 en dev: CSV por ejemplo, selección de casos y causas
 src/prototipo.py           prototipo de inferencia sin conexión: M1 con los pesos guardados y respaldo en L1
+src/app_gradio.py          interfaz web local del prototipo (Gradio)
+src/reproducir.py          reproduce datos, particiones, líneas base y umbrales en un solo comando
 src/medir_tiempos.py       tiempos de carga y de predicción por caso del prototipo
 src/s3_politicas.py        S3: las dos políticas de intervención y los textos que se le dan al LLM
 src/s3_evaluar.py          S3: evalúa el monitor (M1 + política) contra la referencia
@@ -237,13 +233,15 @@ experiments/               resultados en JSON, con la semilla usada
 experiments/checkpoints/   pesos de M1 (no se suben a GitHub)
 docs/politicas_s3.md       políticas, casos y limitaciones de S3
 docs/bitacora_ia.md        bitácora de uso de IA
+docs/revision_codigo.md    revisión del código: verificaciones, hallazgos y mejoras posibles
+docs/informe/              informe IEEE: fuentes LaTeX, figuras y PDF
+requirements-app.txt       dependencia opcional de la interfaz web
 ```
 
-## Pendiente para el Hito 3
+## Informe
 
-- Prototipo: medir tiempos de carga y predicción, preparar el caso de demostración y declarar el tipo de prototipo.
-- Informe IEEE, diapositivas y defensa.
+El informe técnico (formato IEEE) está en `docs/informe/`: fuentes LaTeX (`agentrisk_hito3.tex`), figuras y el PDF entregado.
 
 ## Uso de IA
 
-Todo el uso de IA está registrado en [`docs/bitacora_ia.md`](docs/bitacora_ia.md). Claude propuso pasos, explicó conceptos, revisó código y redactó la documentación a pedido del estudiante, y editó directamente `src/m2_llm.py`, `src/train_m1.py`, `src/prototipo.py` y `src/analisis_errores.py` a pedido suyo, además de escribir `src/s3_politicas.py`, `src/s3_evaluar.py`, `src/m2_s3.py` y `src/medir_tiempos.py` (detalle en la bitácora). El uso de otras herramientas de IA y la ayuda de terceros también se registran en esa bitácora.
+Todo el uso de IA está registrado en [`docs/bitacora_ia.md`](docs/bitacora_ia.md). Claude propuso pasos, explicó conceptos, revisó código y redactó la documentación a pedido del estudiante, y editó directamente `src/m2_llm.py`, `src/train_m1.py`, `src/prototipo.py` y `src/analisis_errores.py` a pedido suyo, además de escribir `src/s3_politicas.py`, `src/s3_evaluar.py`, `src/m2_s3.py`, `src/medir_tiempos.py`, `src/reproducir.py` y `src/app_gradio.py`, redactar el informe y las diapositivas, y revisar el código (docstrings y arreglos menores, en `docs/revision_codigo.md`). Detalle en la bitácora. El uso de otras herramientas de IA y la ayuda de terceros también se registran en esa bitácora.
