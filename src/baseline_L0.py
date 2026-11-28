@@ -6,7 +6,6 @@ import os
 import json
 from datetime import datetime
 import pandas as pd
-import numpy as np
 
 # Constantes del proyecto
 SEMILLA = 42
@@ -53,7 +52,7 @@ def main():
     # S2b: Etiqueta más frecuente en risk_drivers (usando explode)
     l0_s2b = train['risk_drivers'].explode().value_counts().index[0]
     
-    print(f"\n[L0 Aprendido de Train]")
+    print("\n[L0 Aprendido de Train]")
     print(f" - S1 (Mediana severidad): {l0_s1}")
     print(f" - S2a (Dominio más frecuente): {l0_s2a}")
     print(f" - S2b (Driver más frecuente): {l0_s2b}")

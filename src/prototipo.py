@@ -9,7 +9,6 @@ import sys
 import json
 import time
 import argparse
-from datetime import datetime
 import numpy as np
 import pandas as pd
 import torch
@@ -141,7 +140,7 @@ def cargar_m1(ckpt_dir: str = DEFAULT_CKPT_DIR, device: torch.device | None = No
         config=config,
         cargar_preentrenado=False,
     )
-    state_dict = torch.load(weights_path, map_location="cpu")
+    state_dict = torch.load(weights_path, map_location="cpu", weights_only=True)
     model.load_state_dict(state_dict, strict=True)
     model.to(device)
     model.eval()

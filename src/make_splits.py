@@ -2,6 +2,8 @@
 
 Resultado: data/splits/train_folds.csv (example_id y fold).
 """
+import os
+
 import pandas as pd
 from sklearn.model_selection import StratifiedGroupKFold
 
@@ -38,7 +40,6 @@ def main():
         train_with_groups.loc[val_idx, 'fold'] = fold_idx
 
     # 3. Guardar el resultado en data/splits/ con example_id y fold
-    import os
     os.makedirs("data/splits", exist_ok=True)
     
     splits_df = train_with_groups[['example_id', 'fold']]

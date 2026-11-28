@@ -37,7 +37,7 @@ from src.m2_llm import (
     sanitizar_modelo,
 )
 from src.s3_evaluar import REFERENCIA_CSV_PATH, metricas_por_clase
-from src.s3_politicas import BLOQUEAR, CONFIRMAR, INTERVENCIONES, PERMITIR, POLITICAS, TEXTO_POLITICA_EN
+from src.s3_politicas import BLOQUEAR, CONFIRMAR, PERMITIR, POLITICAS, TEXTO_POLITICA_EN
 
 # Respuesta del LLM (en inglés) -> intervención (en español)
 TRADUCCION = {"allow": PERMITIR, "confirm": CONFIRMAR, "block": BLOQUEAR}
