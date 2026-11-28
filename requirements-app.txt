@@ -1,0 +1,2 @@
+# Interfaz web opcional (python src/app_gradio.py). Se instala aparte para no tocar las versiones del núcleo.
+gradio==6.32.0
